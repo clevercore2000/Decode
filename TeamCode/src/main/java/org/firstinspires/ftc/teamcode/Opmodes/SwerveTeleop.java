@@ -75,6 +75,8 @@ public class SwerveTeleop extends LinearOpMode {
 
             outtake.update();
 
+            outtake.rampShoot(gamepad1.triangle);
+
             if (gamepad1.square) {
                 intake.Start(0.9);
             } else {
@@ -117,94 +119,29 @@ public class SwerveTeleop extends LinearOpMode {
         // Get module states
         SwerveModuleState[] moduleStates = hardware.swerveDrive.getModuleStates();
 
-        // Display drive mode
+        // === SWERVE DRIVE STATUS ===
+        telemetry.addLine("=== SWERVE DRIVE ===");
         telemetry.addData("Mode", "Robot-Centric");
+        telemetry.addData("Input", "F:%.2f S:%.2f R:%.2f", forward, strafe, rotation);
+
+        // Module states (compact 1-line format)
+        telemetry.addData("FL", "%.1f m/s @ %.0f°", moduleStates[0].speedMetersPerSecond, moduleStates[0].angle.getDegrees());
+        telemetry.addData("FR", "%.1f m/s @ %.0f°", moduleStates[1].speedMetersPerSecond, moduleStates[1].angle.getDegrees());
+        telemetry.addData("BL", "%.1f m/s @ %.0f°", moduleStates[2].speedMetersPerSecond, moduleStates[2].angle.getDegrees());
+        telemetry.addData("BR", "%.1f m/s @ %.0f°", moduleStates[3].speedMetersPerSecond, moduleStates[3].angle.getDegrees());
         telemetry.addLine();
 
-        // Display live drive velocities
-        telemetry.addLine("=== DRIVE VELOCITIES ===");
-        telemetry.addData("Forward", "%.2f m/s", forward);
-        telemetry.addData("Strafe", "%.2f m/s", strafe);
-        telemetry.addData("Rotation", "%.2f rad/s", rotation);
-        telemetry.addLine();
+        // === GAME MECHANISMS (COMPACT) ===
+        // Outtake status
+        String outtakeStatus = outtake.isActive() ?
+            String.format("ON @ %.0f RPM (Avg: %.0f)", outtake.getTargetRPM(), outtake.getAverageRPM()) :
+            "OFF";
+        telemetry.addData("Outtake", outtakeStatus);
 
-        // Display outtake status (PID-controlled, 2 motors)
-        telemetry.addLine("=== OUTTAKE (PID) ===");
-
-        // Debug: show active buttons
-        String buttonsPressed = "";
-        if (gamepad1.cross) buttonsPressed += "CROSS ";
-        if (gamepad1.left_bumper) buttonsPressed += "L_BUMP ";
-        if (gamepad1.right_bumper) buttonsPressed += "R_BUMP ";
-        if (buttonsPressed.isEmpty()) buttonsPressed = "NONE";
-        telemetry.addData("Buttons", buttonsPressed);
-        telemetry.addLine();
-
-        // Determine current speed mode
-        String speedMode = "OFF";
-        double targetRPM = outtake.getTargetRPM();
-        if (targetRPM > 0) {
-            if (targetRPM <= 1500) {
-                speedMode = "SLOW";
-            } else if (targetRPM >= 4000) {
-                speedMode = "FAST";
-            } else {
-                speedMode = "NORMAL";
-            }
-        }
-
-        // State information
-        telemetry.addData("State", outtake.isActive() ? "ACTIVE" : "STOPPED");
-        telemetry.addData("Mode", speedMode);
-        telemetry.addData("Target RPM", "%.0f", targetRPM);
-        telemetry.addLine();
-
-        // Live velocity information for both motors
-        telemetry.addData("Motor 1 RPM", "%.0f", outtake.getCurrentRPM1());
-        telemetry.addData("M1 Error", "%.0f RPM", outtake.getError1());
-        telemetry.addData("M1 Power", "%.2f", outtake.getMotorPower1());
-        telemetry.addLine();
-
-        telemetry.addData("Motor 2 RPM", "%.0f", outtake.getCurrentRPM2());
-        telemetry.addData("M2 Error", "%.0f RPM", outtake.getError2());
-        telemetry.addData("M2 Power", "%.2f", outtake.getMotorPower2());
-        telemetry.addLine();
-
-        telemetry.addData("Average RPM", "%.0f", outtake.getAverageRPM());
-        telemetry.addData("At Target", outtake.isAtTargetSpeed() ? "YES" : "NO");
-        telemetry.addLine();
-
-        // Display module states
-        telemetry.addLine("=== SWERVE MODULES ===");
-        displayModuleState("FL", moduleStates[0]);
-        displayModuleState("FR", moduleStates[1]);
-        displayModuleState("BL", moduleStates[2]);
-        displayModuleState("BR", moduleStates[3]);
-        telemetry.addLine();
-
-        // Display controls
-        telemetry.addLine("=== CONTROLS ===");
-        telemetry.addLine("Drive:");
-        telemetry.addLine("  Left Stick: Forward/Strafe");
-        telemetry.addLine("  Right Stick X: Rotation");
-        telemetry.addLine();
-        telemetry.addLine("Outtake Speed:");
-        telemetry.addLine("  Cross ONLY = 2700 RPM");
-        telemetry.addLine("  Cross + L Bump = 1500 RPM");
-        telemetry.addLine("  Cross + R Bump = 4000 RPM");
-        telemetry.addLine();
-        telemetry.addLine("Intake:");
-        telemetry.addLine("  Square: Run intake");
+        // Intake status
+        telemetry.addData("Intake", gamepad1.square ? "RUNNING" : "OFF");
 
         telemetry.update();
     }
 
-    private void displayModuleState(String name, SwerveModuleState state) {
-        telemetry.addData(
-            name,
-            "%.2f m/s @ %.0f°",
-            state.speedMetersPerSecond,
-            state.angle.getDegrees()
-        );
-    }
 }

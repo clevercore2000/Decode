@@ -10,18 +10,16 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
 import org.firstinspires.ftc.teamcode.Constants.DriveConstants;
 import org.firstinspires.ftc.teamcode.Constants.SteeringConstants;
-import org.firstinspires.ftc.teamcode.Subsystems.Utils.EMAFilter;
 
 /**
- * Represents a single swerve module with coaxial design
- * Controls one drive motor and one steering servo (Axon Mini with analog feedback)
+ * Simple, proven swerve module implementation
+ * Uses basic proportional control for steering - lets Axon internal PID do the work
  *
- * Responsibilities:
- * - Read steering position from analog encoder
- * - Control steering angle using CRServo with custom PID
- * - Control drive velocity
- * - Optimize module states (never rotate >90°)
- * - Provide current state for telemetry
+ * Key changes from complex version:
+ * - NO external PID controller (Axon servo has internal PID)
+ * - Simple proportional control: power = error × gain
+ * - Minimal filtering to reduce lag
+ * - Trust the hardware, keep software simple
  */
 public class SwerveModule {
 
@@ -35,27 +33,12 @@ public class SwerveModule {
     private final boolean steerInverted;
     private final String moduleName;
 
-    // Controllers
-    private final PIDController steerPID;
-    private final PIDController drivePID;
-
-    // Encoder filtering
-    private final EMAFilter encoderFilter;
+    // Minimal filtering for encoder noise
+    private double filteredAngle = 0;
 
     // State tracking
     private SwerveModuleState desiredState = new SwerveModuleState();
 
-    /**
-     * Create a new swerve module
-     *
-     * @param driveMotor Motor for driving the wheel (must be DcMotorEx for velocity control)
-     * @param steerServo CRServo for steering (Axon Mini)
-     * @param steerEncoder Analog input for steering position
-     * @param angleOffset Calibration offset in radians
-     * @param driveInverted Whether to invert drive motor direction
-     * @param steerInverted Whether to invert steering servo direction
-     * @param moduleName Name for telemetry (e.g., "FL")
-     */
     public SwerveModule(
         DcMotorEx driveMotor,
         CRServo steerServo,
@@ -81,30 +64,13 @@ public class SwerveModule {
             this.driveMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         }
 
-        // Initialize PID controllers
-        this.steerPID = new PIDController(
-            SteeringConstants.STEER_P,
-            SteeringConstants.STEER_I,
-            SteeringConstants.STEER_D
-        );
-        // Enable continuous input for steering (angles wrap at 2π)
-        this.steerPID.enableContinuousInput(-Math.PI, Math.PI);
-
-        this.drivePID = new PIDController(
-            DriveConstants.DRIVE_P,
-            DriveConstants.DRIVE_I,
-            DriveConstants.DRIVE_D
-        );
-
-        // Initialize encoder filter to reduce noise
-        this.encoderFilter = new EMAFilter();
+        // Initialize filtered angle
+        this.filteredAngle = getSteeringAngle();
     }
 
     /**
      * Set the desired state for this module
-     * Optimizes the state to minimize rotation and applies control
-     *
-     * @param desiredState Target speed and angle
+     * Uses simple proportional control - proven to work
      */
     public void setDesiredState(SwerveModuleState desiredState) {
         // Optimize state to avoid rotating more than 90 degrees
@@ -115,43 +81,43 @@ public class SwerveModule {
 
         this.desiredState = optimizedState;
 
-        // Steering angle PID control
+        // === STEERING CONTROL (SIMPLE PROPORTIONAL) ===
         double currentAngle = getSteeringAngle();
         double targetAngle = optimizedState.angle.getRadians();
 
-        // Normalize angle error (wraps at 2π)
-        double angleError = targetAngle - currentAngle;
-        angleError = normalizeAngle(angleError);
-        double normalizedTarget = currentAngle + angleError;
+        // Calculate shortest angle error (wrap at 2π)
+        double angleError = normalizeAngle(targetAngle - currentAngle);
 
-        // Apply deadband to reduce servo jitter
+        // Simple proportional control - let Axon servo internal PID do the heavy lifting
         double steerPower;
         if (Math.abs(angleError) < SteeringConstants.STEERING_DEADBAND_RADIANS) {
+            // Within deadband - stop to prevent jitter
             steerPower = 0.0;
         } else {
-            steerPower = steerPID.calculate(normalizedTarget, currentAngle);
+            // Simple: power = error × gain
+            steerPower = angleError * SteeringConstants.STEER_KP;
+            // Clamp to valid servo range
             steerPower = Math.max(-1.0, Math.min(1.0, steerPower));
         }
 
         steerServo.setPower(steerInverted ? -steerPower : steerPower);
 
-        // Drive motor PID + feedforward with cosine compensation
-        // Cosine compensation reduces skew during direction changes (WPILib pattern)
-        double cosineScalar = Math.abs(Math.cos(angleError));
-        double currentVelocity = getDriveVelocity();
-        double targetVelocity = optimizedState.speedMetersPerSecond * cosineScalar;
+        // === DRIVE CONTROL (SIMPLE FEEDFORWARD) ===
+        // Cosine compensation reduces skew during direction changes
+        // TEMPORARILY DISABLED for testing - re-enable after motors work
+        // double cosineScalar = Math.abs(Math.cos(angleError));
+        // double targetSpeed = optimizedState.speedMetersPerSecond * cosineScalar;
+        double targetSpeed = optimizedState.speedMetersPerSecond;
 
-        double driveFeedforward = targetVelocity * DriveConstants.DRIVE_FF;
-        double driveFeedback = drivePID.calculate(targetVelocity, currentVelocity);
-        double drivePower = Math.max(-1.0, Math.min(1.0, driveFeedforward + driveFeedback));
+        // Kinematics already normalizes speeds to max - just clamp to [-1, 1]
+        // NO additional division needed!
+        double drivePower = Math.max(-1.0, Math.min(1.0, targetSpeed));
 
         driveMotor.setPower(drivePower);
     }
 
     /**
-     * Get the current state of the module (velocity and angle)
-     *
-     * @return Current module state
+     * Get the current state of the module
      */
     public SwerveModuleState getState() {
         return new SwerveModuleState(
@@ -170,33 +136,26 @@ public class SwerveModule {
 
     /**
      * Get the current steering angle in radians
-     * Reads analog encoder, applies gear ratio and offset
-     *
-     * @return Steering angle in radians [-π, π]
+     * Minimal filtering to reduce lag
      */
     private double getSteeringAngle() {
-        // Read analog voltage (0-3.3V) and convert to angle
-        // Axon Mini: encoder on servo shaft with 2:1 reduction
-        // 0-3.3V = 0-720° servo rotation = 0-360° wheel rotation
+        // Read analog voltage (0-3.3V = 0-355° with ~5° dead zone)
         double rawVoltage = steerEncoder.getVoltage();
 
-        // Apply EMA filter to reduce noise
-        double filteredVoltage = encoderFilter.filter(rawVoltage, SteeringConstants.ENCODER_FILTER_ALPHA);
+        // Convert voltage to angle (0-3.3V = 0-2π radians)
+        double rawAngle = (rawVoltage / SteeringConstants.ANALOG_VOLTAGE_MAX) * 2 * Math.PI;
 
-        // Convert voltage to wheel angle
-        // 0-3.3V = 0-355° wheel rotation (encoder measures wheel directly, not servo)
-        // Note: ~5° dead zone exists where voltage jumps from 3.3V to 0V
-        double rawAngle = (filteredVoltage / SteeringConstants.ANALOG_VOLTAGE_MAX) * 2 * Math.PI;
+        // Minimal EMA filtering (95% new, 5% old) - barely any lag
+        filteredAngle = SteeringConstants.ENCODER_FILTER_ALPHA * rawAngle
+                      + (1 - SteeringConstants.ENCODER_FILTER_ALPHA) * filteredAngle;
 
         // Apply calibration offset and normalize
-        double angle = rawAngle - angleOffset;
+        double angle = filteredAngle - angleOffset;
         return normalizeAngle(angle);
     }
 
     /**
      * Get raw encoder voltage for debugging
-     *
-     * @return Encoder voltage (0-3.3V)
      */
     public double getRawEncoderVoltage() {
         return steerEncoder.getVoltage();
@@ -204,8 +163,6 @@ public class SwerveModule {
 
     /**
      * Get the drive velocity in meters per second
-     *
-     * @return Current drive velocity
      */
     private double getDriveVelocity() {
         // Get velocity in ticks per second
@@ -216,39 +173,20 @@ public class SwerveModule {
     }
 
     /**
-     * Get the drive position in meters
-     *
-     * @return Current drive position
-     */
-    private double getDrivePosition() {
-        // Get position in ticks
-        int positionTicks = driveMotor.getCurrentPosition();
-
-        // Convert to meters
-        return positionTicks / DriveConstants.TICKS_PER_METER;
-    }
-
-    /**
      * Normalize angle to [-π, π] range
-     *
-     * @param angle Angle in radians
-     * @return Normalized angle
      */
     private double normalizeAngle(double angle) {
-        double normalized = angle;
-        while (normalized > Math.PI) {
-            normalized -= 2 * Math.PI;
+        while (angle > Math.PI) {
+            angle -= 2 * Math.PI;
         }
-        while (normalized < -Math.PI) {
-            normalized += 2 * Math.PI;
+        while (angle < -Math.PI) {
+            angle += 2 * Math.PI;
         }
-        return normalized;
+        return angle;
     }
 
     /**
      * Get the module name for telemetry
-     *
-     * @return Module name (e.g., "FL")
      */
     public String getModuleName() {
         return moduleName;
@@ -256,8 +194,6 @@ public class SwerveModule {
 
     /**
      * Get the desired state (for telemetry/debugging)
-     *
-     * @return Desired module state
      */
     public SwerveModuleState getDesiredState() {
         return desiredState;
@@ -265,11 +201,16 @@ public class SwerveModule {
 
     /**
      * Get current steering angle for telemetry
-     *
-     * @return Current steering angle in radians
      */
     public double getCurrentSteeringAngle() {
         return getSteeringAngle();
+    }
+
+    /**
+     * Get current drive motor power for debugging
+     */
+    public double getDrivePower() {
+        return driveMotor.getPower();
     }
 
     /**

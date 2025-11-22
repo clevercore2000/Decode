@@ -1,8 +1,12 @@
 package org.firstinspires.ftc.teamcode.Subsystems;
 
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.Gamepad;
+import com.qualcomm.robotcore.hardware.HardwareMap;
+
 import org.firstinspires.ftc.teamcode.Constants.OuttakeConstants;
 import org.firstinspires.ftc.teamcode.Hardware.Hardware;
+import org.firstinspires.ftc.teamcode.Hardware.ServoCfg;
 
 /**
  * Outtake Subsystem - PID-controlled RPM for 2 motors
@@ -16,6 +20,10 @@ public class Outtake {
     private PIDController pidController1;
     private PIDController pidController2;
 
+    private ServoCfg ramp;
+
+
+
     private double targetRPM = 0.0;
     private double currentRPM1 = 0.0;
     private double currentRPM2 = 0.0;
@@ -27,6 +35,9 @@ public class Outtake {
         this.hardware = hardware;
         this.motor1 = hardware.outtakeHardware.WheelMotor1;
         this.motor2 = hardware.outtakeHardware.WheelMotor2;
+
+        ramp = new ServoCfg(hardware.outtakeHardware.RampServo, 100);
+        ramp.setRange(OuttakeConstants.RAMP_MIN, OuttakeConstants.RAMP_MAX);
 
         this.pidController1 = new PIDController(
             OuttakeConstants.VELOCITY_P,
@@ -47,6 +58,8 @@ public class Outtake {
     }
 
     public void update() {
+
+
         if (!isActive) {
             motor1.setPower(0);
             motor2.setPower(0);
@@ -88,6 +101,19 @@ public class Outtake {
         }
 
         motor2.setPower(motorPower2);
+
+        ramp.execute();
+
+
+
+    }
+
+    public void rampShoot(boolean shootButton){
+
+        ramp.moveTo(OuttakeConstants.RAMP_SHOOT);
+
+
+        ramp.moveTo(OuttakeConstants.RAMP_IDLE);
     }
 
     public void stop() {

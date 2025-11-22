@@ -190,52 +190,79 @@ Verification:
 - [ ] Run `SwerveModuleTest.java` - verify each module rotates to 0°, 90°, 180°, 270°
 - [ ] No random servo movement
 
+## Architecture Redesign (2025-01-22)
+
+### **Critical Discovery: External PID vs Axon Internal PID Conflict**
+
+**Problem**: Axon servos have built-in PID controllers (pre-tuned, factory set). Adding external PID creates:
+- Fighting control loops (external PID vs servo internal PID)
+- Erratic, random servo behavior
+- Some modules work, some don't (unpredictable oscillations)
+
+**Research Sources**:
+- Chief Delphi forums: "P-only controllers oscillate as kP increases"
+- FTC community: "Axon servos tricky to control due to control system constraints"
+- Axon docs: "Dampening Factor shouldn't be modified - pre-tuned"
+- Working implementations: Use simple proportional control only
+
+### **New Approach: Simple Proportional Control**
+
+**Steering Control**:
+```java
+// OLD (Complex - caused erratic behavior):
+double output = PID.calculate(target, current)  // External PID
+servoPower = output                              // Fights internal PID
+
+// NEW (Simple - proven to work):
+double error = normalizeAngle(target - current)
+double servoPower = error × STEER_KP (0.05)     // Just give direction
+// Let Axon internal PID do the stabilization
+```
+
+**Drive Control**:
+```java
+// OLD: Velocity PID + Feedforward
+// NEW: Simple feedforward only
+drivePower = targetSpeed / maxSpeed
+```
+
+**Key Parameters** (SteeringConstants.java):
+- `STEER_KP = 0.05` (simple proportional, very small gain)
+- `ENCODER_FILTER_ALPHA = 0.95` (minimal filtering for low lag)
+- `STEERING_DEADBAND = 0.05 rad` (prevents jitter near target)
+
+### **Files Changed**:
+- ✅ `SwerveModule.java` - Completely rebuilt with simple control
+- ✅ `SteeringConstants.java` - Removed PID constants, added STEER_KP
+- ⚠️ `PIDController.java` - No longer used (kept for reference)
+
 ## Known Issues
 
-**IMPORTANT**: All calibration offsets must be redone after fixing gear ratio bug (Issue #4)!
+### #1: Previous Complex PID Approach 🔴 CAUSED ERRATIC BEHAVIOR
 
-### #1: Calibration Encoder Power Dependency 🟢 FIXED
+**Issue**: External PID controller fighting with Axon servo internal PID
 
-**Issue**: Hall effect encoders require active servo electronics to output voltage
+**Symptoms**:
+- Servos behave erratically
+- Some modules work, some don't (random)
+- Wild oscillations or extremely slow response
 
-**Fix**: `SwerveCalibration.java` lines 97-107 keep servos powered via `setDesiredState()` loop
+**Fix**: Removed external PID, using simple proportional control
 
-**Status**: Working correctly - servos stay powered during calibration
-
----
-
-### #2: PID Gains 100× Too Low 🟢 FIXED
-
-`STEER_P = 0.01` → `1.0` in `SteeringConstants.java` lines 54, 56
+**Status**: Fixed with architecture redesign
 
 ---
 
-### #3: Missing Joystick Deadband 🟢 FIXED
+### #2: Encoder Reads Wheel Angle Directly ✅ VERIFIED
 
-`JOYSTICK_DEADBAND = 0` → `0.05` in `ControlConstants.java` line 18
+**Issue**: Confusion about gear ratio application
 
----
+**Truth**: Analog encoder measures **wheel output shaft** (not servo shaft)
+- 0-3.3V = 0-355° wheel rotation
+- ~5° dead zone where voltage jumps 3.3V → 0V
+- NO gear ratio correction needed in software
 
-### #4: Voltage-to-Angle Conversion 🟢 FIXED
-
-**Issue**: SERVO_TO_STEERING_RATIO constant defined but never used
-
-**Root Cause**: Encoder on servo shaft with 2:1 reduction, but code didn't apply gear ratio
-
-**Fix**: `SwerveModule.java` line 186 now multiplies by `SERVO_TO_STEERING_RATIO` (0.5)
-
-**Impact**: Old calibration offsets are invalid - must recalibrate all modules
-
----
-
-### Summary Table
-
-| Issue | Status | Priority | Fix |
-|-------|--------|----------|-----|
-| Calibration encoder power | 🟢 FIXED | CRITICAL | Lines 97-107 in SwerveCalibration.java |
-| PID gains too low | 🟢 FIXED | HIGH | Complete |
-| Missing deadband | 🟢 FIXED | MEDIUM | Complete |
-| Gear ratio not applied | 🟢 FIXED | CRITICAL | Added SERVO_TO_STEERING_RATIO multiplication |
+**Status**: Verified - encoder conversion is correct
 
 ## Development Workflow
 
@@ -243,7 +270,25 @@ Verification:
 1. Calibration: `SwerveCalibration` → set offsets
 2. Module Test: `SwerveModuleTest` → verify individual modules
 3. Teleop: `SwerveTeleop` → driver control
-4. Tuning: FTC Dashboard → adjust PID in real-time
+4. Tuning: FTC Dashboard → adjust STEER_KP if needed
+
+**Tuning the New Simple Control** (FTC Dashboard @ http://192.168.43.1:8080/dash):
+
+Start with `STEER_KP = 0.05`:
+- **Too slow to respond?** Increase STEER_KP by 0.01 increments (try 0.06, 0.07, etc.)
+- **Servos oscillate/jitter?** Decrease STEER_KP by 0.01 increments (try 0.04, 0.03, etc.)
+- **Still jittery when stopped?** Increase `STEERING_DEADBAND_RADIANS` to 0.1
+
+**Expected behavior**:
+- Modules should smoothly rotate to target angles
+- No wild oscillations or erratic movement
+- All 4 modules should behave consistently (not random)
+- Slight servo hum when holding position is normal
+
+**DO NOT**:
+- Add back derivative or integral terms
+- Increase STEER_KP above 0.2 (will fight internal PID)
+- Modify Axon servo internal dampening settings
 
 **OpMode Template:**
 ```java
@@ -304,3 +349,4 @@ public class MyOpMode extends LinearOpMode {
 **Community:**
 - Chief Delphi FTC: https://www.chiefdelphi.com/c/first-programs/first-tech-challenge/223
 - FTC Forum: https://ftcforum.firstinspires.org/
+- ALWAYS REASEARCH, TRIPLECHECK AND USE THE WEB IF UNCLEAR

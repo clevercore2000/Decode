@@ -10,7 +10,14 @@ import org.firstinspires.ftc.teamcode.Hardware.SwerveHardware;
 
 /**
  * Swerve Drive Subsystem
- * Converts chassis velocities to module states using WPILib kinematics
+ *
+ * Manages 4-module swerve drive using FTCLib WPILib kinematics
+ * Converts chassis velocities (forward, strafe, rotation) to individual module states
+ *
+ * Architecture:
+ * - Uses simple proportional control for steering (trust Axon servo internal PID)
+ * - FTCLib handles inverse kinematics (ChassisSpeeds → SwerveModuleStates)
+ * - Module ordering: Front-Left, Front-Right, Back-Left, Back-Right
  */
 public class SwerveDrive {
 
@@ -20,22 +27,20 @@ public class SwerveDrive {
     private final SwerveModule backRight;
     private final SwerveDriveKinematics kinematics;
 
-    //TODO Uncomment for field-centric drive
+    // Uncomment for field-centric drive (requires IMU)
     // private final IMU imu;
 
     public SwerveDrive(SwerveHardware swerveHardware) {
-        //TODO Uncomment for field-centric drive
+        // Uncomment for field-centric drive
         // imu = swerveHardware.imu;
 
-        // Note: For coaxial swerve, all drive motors should have the same inversion
-        // based on physical mounting orientation, NOT left/right side
-        // Adjust all to true if motors run backwards when given positive power
+        // Initialize modules (FL, FR, BL, BR order is important - matches kinematics)
         frontLeft = new SwerveModule(
             swerveHardware.flDrive,
             swerveHardware.flSteer,
             swerveHardware.flEncoder,
             SteeringConstants.FL_ANGLE_OFFSET,
-            false,  // driveInverted
+            false,  // driveInverted - adjust if motors run backwards
             false,  // steerInverted
             "FL"
         );
@@ -45,8 +50,8 @@ public class SwerveDrive {
             swerveHardware.frSteer,
             swerveHardware.frEncoder,
             SteeringConstants.FR_ANGLE_OFFSET,
-            false,  // driveInverted - changed from true (tank drive logic)
-            false,  // steerInverted
+            false,
+            false,
             "FR"
         );
 
@@ -55,8 +60,8 @@ public class SwerveDrive {
             swerveHardware.blSteer,
             swerveHardware.blEncoder,
             SteeringConstants.BL_ANGLE_OFFSET,
-            false,  // driveInverted
-            false,  // steerInverted
+            false,
+            false,
             "BL"
         );
 
@@ -65,11 +70,12 @@ public class SwerveDrive {
             swerveHardware.brSteer,
             swerveHardware.brEncoder,
             SteeringConstants.BR_ANGLE_OFFSET,
-            false,  // driveInverted - changed from true (tank drive logic)
-            false,  // steerInverted
+            false,
+            false,
             "BR"
         );
 
+        // Initialize kinematics with module positions
         kinematics = new SwerveDriveKinematics(
             DriveConstants.FL_POSITION,
             DriveConstants.FR_POSITION,
@@ -78,10 +84,18 @@ public class SwerveDrive {
         );
     }
 
+    /**
+     * Drive the robot with given velocities
+     *
+     * @param xSpeed Forward velocity in m/s (positive = forward)
+     * @param ySpeed Strafe velocity in m/s (positive = left)
+     * @param rotSpeed Rotation velocity in rad/s (positive = CCW)
+     * @param fieldRelative Whether velocities are field-relative (requires IMU)
+     */
     public void drive(double xSpeed, double ySpeed, double rotSpeed, boolean fieldRelative) {
-        ChassisSpeeds chassisSpeeds = new ChassisSpeeds(xSpeed, ySpeed, rotSpeed);
+        ChassisSpeeds chassisSpeeds;
 
-        //TODO Uncomment for field-centric drive
+        // Uncomment for field-centric drive (requires IMU initialized)
         /*
         if (fieldRelative) {
             chassisSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(
@@ -92,17 +106,26 @@ public class SwerveDrive {
         }
         */
 
+        // Robot-centric drive (default)
+        chassisSpeeds = new ChassisSpeeds(xSpeed, ySpeed, rotSpeed);
+
+        // Convert chassis speeds to individual module states
         SwerveModuleState[] moduleStates = kinematics.toSwerveModuleStates(chassisSpeeds);
 
-        // Normalize to stay within speed limits while preserving motion ratios
+        // Normalize speeds if any exceed max (preserves motion ratios)
         SwerveDriveKinematics.normalizeWheelSpeeds(
             moduleStates,
             DriveConstants.MAX_SPEED_METERS_PER_SECOND
         );
 
+        // Send states to modules
         setModuleStates(moduleStates);
     }
 
+    /**
+     * Set desired states for all modules
+     * Order must match kinematics: FL, FR, BL, BR
+     */
     public void setModuleStates(SwerveModuleState[] desiredStates) {
         if (desiredStates.length != 4) {
             throw new IllegalArgumentException("Must provide exactly 4 module states");
@@ -114,7 +137,53 @@ public class SwerveDrive {
         backRight.setDesiredState(desiredStates[3]);
     }
 
-    //TODO Uncomment for field-centric drive
+    /**
+     * Get current states of all modules (for odometry/telemetry)
+     * Returns in order: FL, FR, BL, BR
+     */
+    public SwerveModuleState[] getModuleStates() {
+        return new SwerveModuleState[] {
+            frontLeft.getState(),
+            frontRight.getState(),
+            backLeft.getState(),
+            backRight.getState()
+        };
+    }
+
+    /**
+     * Stop all modules (zero power)
+     */
+    public void stop() {
+        frontLeft.stop();
+        frontRight.stop();
+        backLeft.stop();
+        backRight.stop();
+    }
+
+    /**
+     * Reset all drive encoders to zero
+     */
+    public void resetDriveEncoders() {
+        frontLeft.resetDriveEncoder();
+        frontRight.resetDriveEncoder();
+        backLeft.resetDriveEncoder();
+        backRight.resetDriveEncoder();
+    }
+
+    /**
+     * Get a specific module by index (0=FL, 1=FR, 2=BL, 3=BR)
+     */
+    public SwerveModule getModule(int index) {
+        switch (index) {
+            case 0: return frontLeft;
+            case 1: return frontRight;
+            case 2: return backLeft;
+            case 3: return backRight;
+            default: throw new IllegalArgumentException("Invalid module index: " + index);
+        }
+    }
+
+    // Uncomment for field-centric drive
     /*
     public void zeroHeading() {
         imu.resetYaw();
@@ -125,38 +194,11 @@ public class SwerveDrive {
             imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES)
         );
     }
+
+    // For odometry - update robot pose based on module states
+    public void updateOdometry() {
+        // Implementation depends on odometry class setup
+        // See FTCLib SwerveDriveOdometry documentation
+    }
     */
-
-    public SwerveModuleState[] getModuleStates() {
-        return new SwerveModuleState[] {
-            frontLeft.getState(),
-            frontRight.getState(),
-            backLeft.getState(),
-            backRight.getState()
-        };
-    }
-
-    public void stop() {
-        frontLeft.stop();
-        frontRight.stop();
-        backLeft.stop();
-        backRight.stop();
-    }
-
-    public void resetDriveEncoders() {
-        frontLeft.resetDriveEncoder();
-        frontRight.resetDriveEncoder();
-        backLeft.resetDriveEncoder();
-        backRight.resetDriveEncoder();
-    }
-
-    public SwerveModule getModule(int index) {
-        switch (index) {
-            case 0: return frontLeft;
-            case 1: return frontRight;
-            case 2: return backLeft;
-            case 3: return backRight;
-            default: throw new IllegalArgumentException("Invalid module index: " + index);
-        }
-    }
 }

@@ -6,6 +6,20 @@ package org.firstinspires.ftc.teamcode.Constants;
  */
 public class OuttakeConstants {
 
+    // =============== RAMP SERVO CONFIG & POSITIONS ===============
+
+    public static final double RAMP_MAX = 100;
+    public static final double RAMP_MIN = 180;
+
+    public static final double RAMP_IDLE = 150;
+
+    public static final double RAMP_SHOOT = 180;
+
+
+
+
+
+
     // ========== MOTOR SPECIFICATIONS ==========
     // Maximum motor RPM (GoBILDA Yellow Jacket = 5281, REV HD Hex = 6000)
     public static final double MAX_MOTOR_RPM = 6000.0;

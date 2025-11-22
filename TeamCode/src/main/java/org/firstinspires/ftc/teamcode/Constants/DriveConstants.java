@@ -11,11 +11,12 @@ import com.arcrobotics.ftclib.geometry.Translation2d;
 public class DriveConstants {
 
     // ========== ROBOT DIMENSIONS ==========
+    // SQUARE ROBOT: All modules equidistant from center
     // Wheelbase: front-to-back distance between module centers (meters)
-    public static double WHEELBASE_METERS = 0.325;
-
     // Track width: left-to-right distance between module centers (meters)
-    public static double TRACK_WIDTH_METERS = 0.445;
+    // IMPORTANT: For square robot, these MUST be equal!
+    public static double WHEELBASE_METERS = 0.385;
+    public static double TRACK_WIDTH_METERS = 0.385;  // Same as wheelbase (square config)
 
     // Module positions relative to robot center (+X forward, +Y left)
     public static final Translation2d FL_POSITION =
@@ -47,21 +48,16 @@ public class DriveConstants {
 
     public static double MAX_ANGULAR_VELOCITY = Math.PI;  // Maximum rotation speed (rad/s)
 
-    // ========== DRIVE PID CONSTANTS ==========
+    // ========== DRIVE CONTROL ==========
     /**
-     * Drive velocity PID gains
-     * Used for precise speed control of drive motors
+     * Drive motor control uses simple feedforward (no PID)
+     * motorPower = targetSpeed / MAX_SPEED_METERS_PER_SECOND
+     *
+     * This simple approach works because:
+     * - No fighting with external PID
+     * - Motors naturally reach commanded speed
+     * - FTCLib kinematics handles the complex math
      */
-    public static double DRIVE_P = 0.1;
-    public static double DRIVE_I = 0.0;
-    public static double DRIVE_D = 0.0;
-
-    /**
-     * Drive feedforward gain
-     * Maps desired velocity to motor power
-     * Calculated as 1 / max_velocity
-     */
-    public static double DRIVE_FF = 1.0 / MAX_SPEED_METERS_PER_SECOND;
 
     // ========== CONFIGURATION VALIDATION ==========
     // Static initializer to validate configuration values at class loading

@@ -4,6 +4,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.Servo;
 
 /**
  * Hardware configuration for Outtake subsystem (2-motor wheel mechanism)
@@ -14,12 +15,17 @@ public class OuttakeHardware {
     private static final String Wheel_1 = "w1";
     private static final String Wheel_2 = "w2";
 
+    private static final String Ramp_servo = "rs";
+
     public final DcMotorEx WheelMotor1;
     public final DcMotorEx WheelMotor2;
+    public Servo RampServo;
 
     public OuttakeHardware(HardwareMap hardwareMap) {
         WheelMotor1 = hardwareMap.get(DcMotorEx.class, Wheel_1);
         WheelMotor2 = hardwareMap.get(DcMotorEx.class, Wheel_2);
+
+        RampServo = hardwareMap.get(Servo.class, Ramp_servo);
 
         // Configure motor behavior
         WheelMotor1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
