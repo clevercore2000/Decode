@@ -87,6 +87,8 @@ public class SwerveModule {
             SteeringConstants.STEER_I,
             SteeringConstants.STEER_D
         );
+        // Enable continuous input for steering (angles wrap at 2π)
+        this.steerPID.enableContinuousInput(-Math.PI, Math.PI);
 
         this.drivePID = new PIDController(
             DriveConstants.DRIVE_P,
@@ -133,9 +135,11 @@ public class SwerveModule {
 
         steerServo.setPower(steerInverted ? -steerPower : steerPower);
 
-        // Drive motor PID + feedforward
+        // Drive motor PID + feedforward with cosine compensation
+        // Cosine compensation reduces skew during direction changes (WPILib pattern)
+        double cosineScalar = Math.abs(Math.cos(angleError));
         double currentVelocity = getDriveVelocity();
-        double targetVelocity = optimizedState.speedMetersPerSecond;
+        double targetVelocity = optimizedState.speedMetersPerSecond * cosineScalar;
 
         double driveFeedforward = targetVelocity * DriveConstants.DRIVE_FF;
         double driveFeedback = drivePID.calculate(targetVelocity, currentVelocity);
@@ -180,10 +184,9 @@ public class SwerveModule {
         double filteredVoltage = encoderFilter.filter(rawVoltage, SteeringConstants.ENCODER_FILTER_ALPHA);
 
         // Convert voltage to wheel angle
-        // 0-3.3V represents 0-360° servo rotation
-        // Apply 2:1 gear ratio (servo rotates 2x, wheel rotates 1x)
-        double servoAngle = (filteredVoltage / SteeringConstants.ANALOG_VOLTAGE_MAX) * 2 * Math.PI;
-        double rawAngle = servoAngle * SteeringConstants.SERVO_TO_STEERING_RATIO;
+        // 0-3.3V = 0-355° wheel rotation (encoder measures wheel directly, not servo)
+        // Note: ~5° dead zone exists where voltage jumps from 3.3V to 0V
+        double rawAngle = (filteredVoltage / SteeringConstants.ANALOG_VOLTAGE_MAX) * 2 * Math.PI;
 
         // Apply calibration offset and normalize
         double angle = rawAngle - angleOffset;

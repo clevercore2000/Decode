@@ -24,23 +24,23 @@ public class SteeringConstants {
     // ========== MODULE ANGLE OFFSETS ==========
     // IMPORTANT: These offsets are INVALID after fixing gear ratio bug!
     // Run SwerveCalibration OpMode to get new values
-    public static double FL_ANGLE_OFFSET = -2.24;  // TODO: Recalibrate
-    public static double FR_ANGLE_OFFSET = -3.103;  // TODO: Recalibrate
-    public static double BL_ANGLE_OFFSET = 2.1;  // TODO: Recalibrate
-    public static double BR_ANGLE_OFFSET = 1.9;  // TODO: Recalibrate
+    public static double FL_ANGLE_OFFSET = -0.08;  // TODO: Recalibrate
+    public static double FR_ANGLE_OFFSET = 0;  // TODO: Recalibrate
+    public static double BL_ANGLE_OFFSET = 2.43;  // TODO: Recalibrate
+    public static double BR_ANGLE_OFFSET = -0.4;  // TODO: Recalibrate
 
     // ========== STEERING PID CONSTANTS ==========
-    // Reduced to fix jittering/oscillation (servos shaking rapidly)
-    public static double STEER_P = 0.25;  // Lowered from 0.6 to reduce jitter
+    // Tuned based on FTC best practices and research
+    public static double STEER_P = 0.8;  // Increased for more responsive steering
     public static double STEER_I = 0.0;
-    public static double STEER_D = 0.05;  // Lowered from 0.1
+    public static double STEER_D = 0.05;
 
     // ========== ENCODER FILTERING ==========
-    // EMA filter alpha (0.0-1.0, higher = less filtering)
-    // TODO: tune if needed
-    public static double ENCODER_FILTER_ALPHA = 0.7;
+    // EMA filter alpha (0.0-1.0, higher = less filtering, more responsive)
+    // Increased to reduce lag while still filtering noise
+    public static double ENCODER_FILTER_ALPHA = 0.9;
 
-    // Steering deadband in radians (~1.15 degrees)
-    // TODO: tune if needed
-    public static double STEERING_DEADBAND_RADIANS = 0.02;
+    // Steering deadband in radians (~0.57 degrees)
+    // Reduced for better precision
+    public static double STEERING_DEADBAND_RADIANS = 0.01;
 }
