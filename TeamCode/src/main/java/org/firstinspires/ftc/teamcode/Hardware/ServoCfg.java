@@ -4,7 +4,7 @@ package org.firstinspires.ftc.teamcode.Hardware;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-public class ServoCfg
+public class    ServoCfg
 {
     Servo servo;    // Servo hardware
     enum  ServoState {servoReady, servoMove}; // Status of ServoCfg object

@@ -73,9 +73,10 @@ public class SwerveTeleop extends LinearOpMode {
                 outtake.stop();
             }
 
-            outtake.update();
-
+            // Call rampShoot BEFORE update so state machine runs before execute()
             outtake.rampShoot(gamepad1.triangle);
+
+            outtake.update();
 
             if (gamepad1.square) {
                 intake.Start(0.9);

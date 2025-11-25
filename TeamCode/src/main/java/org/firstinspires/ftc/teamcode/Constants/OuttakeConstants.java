@@ -7,13 +7,14 @@ package org.firstinspires.ftc.teamcode.Constants;
 public class OuttakeConstants {
 
     // =============== RAMP SERVO CONFIG & POSITIONS ===============
+    // Range: 0-355° for Axon Mini servo (full range, 5° dead zone at 355-360)
 
-    public static final double RAMP_MAX = 100;
-    public static final double RAMP_MIN = 180;
+    public static final double RAMP_MAX = 355;  // Axon Mini maximum angle
+    public static final double RAMP_MIN = 0;    // Axon Mini minimum angle
 
-    public static final double RAMP_IDLE = 150;
+    public static final double RAMP_IDLE = 92.5;   // Measured using ServoTest
 
-    public static final double RAMP_SHOOT = 180;
+    public static final double RAMP_SHOOT = 127.5; // Measured using ServoTest
 
 
 

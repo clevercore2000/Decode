@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.Subsystems;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.Constants.OuttakeConstants;
 import org.firstinspires.ftc.teamcode.Hardware.Hardware;
@@ -22,7 +23,16 @@ public class Outtake {
 
     private ServoCfg ramp;
 
-
+    // Simple 3-state ramp machine with hold delay
+    private enum RampState {
+        IDLE,           // Ramp at idle position, ready to shoot
+        SHOOTING,       // Moving to shoot position
+        HOLDING         // Holding at shoot position before returning
+    }
+    private RampState rampState = RampState.IDLE;
+    private boolean lastShootButton = false;
+    private ElapsedTime shootTimer = new ElapsedTime();
+    private static final double SHOOT_HOLD_TIME = 0.5;  // Seconds to hold at SHOOT
 
     private double targetRPM = 0.0;
     private double currentRPM1 = 0.0;
@@ -36,8 +46,9 @@ public class Outtake {
         this.motor1 = hardware.outtakeHardware.WheelMotor1;
         this.motor2 = hardware.outtakeHardware.WheelMotor2;
 
-        ramp = new ServoCfg(hardware.outtakeHardware.RampServo, 100);
+        ramp = new ServoCfg(hardware.outtakeHardware.RampServo, 2);
         ramp.setRange(OuttakeConstants.RAMP_MIN, OuttakeConstants.RAMP_MAX);
+        ramp.moveTo(OuttakeConstants.RAMP_IDLE);  // Initialize to IDLE position
 
         this.pidController1 = new PIDController(
             OuttakeConstants.VELOCITY_P,
@@ -108,12 +119,42 @@ public class Outtake {
 
     }
 
+    /**
+     * Simple auto-shoot: Press button → move to SHOOT → hold → auto-return to IDLE
+     * Only calls moveTo() on state transitions to avoid resetting timer
+     * @param shootButton Triangle button state
+     */
     public void rampShoot(boolean shootButton){
+        // Detect button press (not hold) - only trigger on rising edge
+        boolean buttonPressed = shootButton && !lastShootButton;
+        lastShootButton = shootButton;
 
-        ramp.moveTo(OuttakeConstants.RAMP_SHOOT);
+        // 3-state machine: IDLE → SHOOTING → HOLDING → IDLE
+        switch (rampState) {
+            case IDLE:
+                // Wait for button press
+                if (buttonPressed) {
+                    ramp.moveTo(OuttakeConstants.RAMP_SHOOT);
+                    rampState = RampState.SHOOTING;
+                }
+                break;
 
+            case SHOOTING:
+                // Wait for servo to arrive at SHOOT (don't call moveTo again!)
+                if (ramp.isReady()) {
+                    shootTimer.reset();
+                    rampState = RampState.HOLDING;
+                }
+                break;
 
-        ramp.moveTo(OuttakeConstants.RAMP_IDLE);
+            case HOLDING:
+                // Wait for hold delay to complete
+                if (shootTimer.seconds() >= SHOOT_HOLD_TIME) {
+                    ramp.moveTo(OuttakeConstants.RAMP_IDLE);
+                    rampState = RampState.IDLE;
+                }
+                break;
+        }
     }
 
     public void stop() {
@@ -121,6 +162,9 @@ public class Outtake {
         targetRPM = 0;
         motor1.setPower(0);
         motor2.setPower(0);
+        // Reset ramp to idle position
+        rampState = RampState.IDLE;
+        ramp.moveTo(OuttakeConstants.RAMP_IDLE);
     }
 
     public boolean isAtTargetSpeed() {
@@ -163,5 +207,27 @@ public class Outtake {
 
     public boolean isActive() {
         return isActive;
+    }
+
+    /**
+     * Get current ramp state for telemetry/debugging
+     */
+    public String getRampState() {
+        return rampState.toString();
+    }
+
+    /**
+     * Check if ramp is ready to shoot (in IDLE state)
+     */
+    public boolean isRampReady() {
+        return rampState == RampState.IDLE;
+    }
+
+    /**
+     * Manually reset ramp to idle position (useful if sequence gets stuck)
+     */
+    public void resetRamp() {
+        rampState = RampState.IDLE;
+        ramp.moveTo(OuttakeConstants.RAMP_IDLE);
     }
 }
