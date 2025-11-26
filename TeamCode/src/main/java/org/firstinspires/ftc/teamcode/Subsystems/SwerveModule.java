@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.Subsystems;
 
+import com.arcrobotics.ftclib.controller.PIDFController;
 import com.arcrobotics.ftclib.geometry.Rotation2d;
 import com.arcrobotics.ftclib.kinematics.wpilibkinematics.SwerveModuleState;
 import com.qualcomm.robotcore.hardware.AnalogInput;
@@ -7,19 +8,20 @@ import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.teamcode.Constants.DriveConstants;
 import org.firstinspires.ftc.teamcode.Constants.SteeringConstants;
 
 /**
- * Simple, proven swerve module implementation
- * Uses basic proportional control for steering - lets Axon internal PID do the work
+ * Swerve module implementation with PID steering control
+ * Based on proven KookyBotz approach - external PID DOES work with Axon servos!
  *
- * Key changes from complex version:
- * - NO external PID controller (Axon servo has internal PID)
- * - Simple proportional control: power = error × gain
- * - Minimal filtering to reduce lag
- * - Trust the hardware, keep software simple
+ * Key features:
+ * - PID controller (P=0.6, D=0.1) for smooth, responsive steering
+ * - Static friction compensation to overcome servo stiction
+ * - Servos kept powered to maintain analog encoder readings
+ * - State optimization to avoid >90° rotations
  */
 public class SwerveModule {
 
@@ -32,6 +34,9 @@ public class SwerveModule {
     private final double angleOffset;
     private final boolean steerInverted;
     private final String moduleName;
+
+    // PID controller for steering
+    private final PIDFController rotationController;
 
     // Minimal filtering for encoder noise
     private double filteredAngle = 0;
@@ -64,13 +69,33 @@ public class SwerveModule {
             this.driveMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         }
 
+        // Initialize PID controller for steering
+        this.rotationController = new PIDFController(
+            SteeringConstants.STEER_P,
+            SteeringConstants.STEER_I,
+            SteeringConstants.STEER_D,
+            0  // F term not used
+        );
+
         // Initialize filtered angle
         this.filteredAngle = getSteeringAngle();
     }
 
     /**
-     * Set the desired state for this module
-     * Uses simple proportional control - proven to work
+     * Set the desired state for this module.
+     *
+     * This method performs the complete module control pipeline:
+     * 1. State optimization (avoids >90° rotation by reversing drive instead)
+     * 2. PID steering control (P=0.6, D=0.1) with static friction compensation
+     * 3. Minimum power enforcement (keeps encoder electronics active)
+     * 4. Feedforward drive control (open-loop speed command)
+     *
+     * @param desiredState Target state containing:
+     *                     - speedMetersPerSecond: Drive velocity
+     *                     - angle: Target steering angle (Rotation2d)
+     *
+     * Note: State is automatically optimized - if target angle requires >90° rotation,
+     * module will rotate ≤90° and reverse drive motor direction instead.
      */
     public void setDesiredState(SwerveModuleState desiredState) {
         // Optimize state to avoid rotating more than 90 degrees
@@ -81,33 +106,64 @@ public class SwerveModule {
 
         this.desiredState = optimizedState;
 
-        // === STEERING CONTROL (SIMPLE PROPORTIONAL) ===
+        // === STEERING CONTROL (PID WITH STATIC FRICTION) ===
         double currentAngle = getSteeringAngle();
         double targetAngle = optimizedState.angle.getRadians();
 
         // Calculate shortest angle error (wrap at 2π)
         double angleError = normalizeAngle(targetAngle - currentAngle);
 
-        // Simple proportional control - let Axon servo internal PID do the heavy lifting
-        double steerPower;
-        if (Math.abs(angleError) < SteeringConstants.STEERING_DEADBAND_RADIANS) {
-            // Within deadband - stop to prevent jitter
-            steerPower = 0.0;
-        } else {
-            // Simple: power = error × gain
-            steerPower = angleError * SteeringConstants.STEER_KP;
-            // Clamp to valid servo range
-            steerPower = Math.max(-1.0, Math.min(1.0, steerPower));
+        // Update PID gains (allows FTC Dashboard tuning)
+        rotationController.setPIDF(
+            SteeringConstants.STEER_P,
+            SteeringConstants.STEER_I,
+            SteeringConstants.STEER_D,
+            0  // F term not used for steering
+        );
+
+        // PID control (setpoint = 0, measurement = error)
+        double steerPower = Range.clip(
+            rotationController.calculate(0, angleError),
+            -SteeringConstants.MAX_SERVO_POWER,
+            SteeringConstants.MAX_SERVO_POWER
+        );
+
+        // Safety: handle NaN (can occur during rapid changes)
+        if (Double.isNaN(steerPower)) {
+            steerPower = 0;
         }
 
+        // Add static friction compensation when error is significant
+        if (Math.abs(angleError) > SteeringConstants.ERROR_THRESHOLD_FOR_STATIC) {
+            steerPower += SteeringConstants.K_STATIC * Math.signum(steerPower);
+        }
+
+        // CRITICAL: Keep servo powered even when at target to maintain encoder readings!
+        // Axon encoders require PWM signals active to output voltage
+        if (Math.abs(steerPower) < SteeringConstants.MIN_SERVO_POWER) {
+            steerPower = SteeringConstants.MIN_SERVO_POWER * Math.signum(angleError);
+        }
+
+        // Apply power (with inversion if needed)
         steerServo.setPower(steerInverted ? -steerPower : steerPower);
 
         // === DRIVE CONTROL (SIMPLE FEEDFORWARD) ===
-        // Cosine compensation reduces skew during direction changes
-        // TEMPORARILY DISABLED for testing - re-enable after motors work
-        // double cosineScalar = Math.abs(Math.cos(angleError));
-        // double targetSpeed = optimizedState.speedMetersPerSecond * cosineScalar;
         double targetSpeed = optimizedState.speedMetersPerSecond;
+
+        // OPTIONAL: Cosine compensation (currently disabled)
+        // Reduces wheel slip/skew when module not yet pointed at target angle
+        // Formula: targetSpeed *= Math.abs(Math.cos(angleError))
+        // Effect: If module 45° off target, scale speed by cos(45°) ≈ 0.707
+        //
+        // When to enable:
+        // - High-speed autonomous with rapid direction changes
+        // - Competition on slippery surfaces (reduce wheel scrubbing)
+        // - After basic functionality verified (adds complexity)
+        //
+        // When to leave disabled:
+        // - Teleop (driver compensates naturally)
+        // - Good traction surfaces (scrubbing minimal)
+        // - Tuning/debugging (one less variable)
 
         // Kinematics already normalizes speeds to max - just clamp to [-1, 1]
         // NO additional division needed!

@@ -164,8 +164,9 @@ public class EncoderTest extends LinearOpMode {
     private void displayEncoderData(String name, AnalogInput encoder, double offset) {
         double voltage = encoder.getVoltage();
 
-        // Convert voltage to wheel angle (encoder on servo shaft with 2:1 reduction)
-        double rawAngle = (voltage / SteeringConstants.ANALOG_VOLTAGE_MAX) * 2 * Math.PI * SteeringConstants.SERVO_TO_STEERING_RATIO;
+        // Convert voltage to wheel angle
+        // Encoder reads wheel angle directly (after gear reduction), no correction needed
+        double rawAngle = (voltage / SteeringConstants.ANALOG_VOLTAGE_MAX) * 2 * Math.PI;
         double angle = rawAngle - offset;
         angle = normalizeAngle(angle);
 

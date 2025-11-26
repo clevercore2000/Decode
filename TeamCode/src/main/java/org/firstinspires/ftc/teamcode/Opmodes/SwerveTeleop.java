@@ -29,9 +29,9 @@ public class SwerveTeleop extends LinearOpMode {
 
     private Intake intake;
 
-    // Uncomment for field-centric drive
-    // private boolean fieldCentric = false;
-    // private boolean lastFieldCentricButton = false;
+    // Field-centric drive control
+    private boolean fieldCentric = true;  // Start in field-centric mode
+    private boolean lastFieldCentricButton = false;
 
     @Override
     public void runOpMode() {
@@ -39,17 +39,19 @@ public class SwerveTeleop extends LinearOpMode {
         outtake = new Outtake(hardware);
         intake = new Intake(hardware);
         telemetry.addData("Status", "Initialized");
-        telemetry.addData("Mode", "Robot-Centric");
+        telemetry.addData("Mode", "Field-Centric (Options to toggle)");
+        telemetry.addData("Controls", "Start = Zero Heading");
         telemetry.update();
 
         waitForStart();
 
         while (opModeIsActive()) {
             // ========== READ INPUTS ==========
-            // Inverted Y for natural forward/backward
-            double forward = -gamepad1.left_stick_y;
-            double strafe = gamepad1.left_stick_x;
-            double rotation = gamepad1.right_stick_x;
+            // Coordinate system: +X=forward, +Y=left, +rotation=CCW
+            // Gamepad: stick up=-Y, stick right=+X, right stick right=+X
+            double forward = -gamepad1.left_stick_y;    // Stick up → +X (forward)
+            double strafe = -gamepad1.left_stick_x;     // Stick right → -Y (right)  [FIXED]
+            double rotation = -gamepad1.right_stick_x;  // Stick right → -rotation (CW)  [FIXED]
 
             forward = applyDeadband(forward, ControlConstants.JOYSTICK_DEADBAND);
             strafe = applyDeadband(strafe, ControlConstants.JOYSTICK_DEADBAND);
@@ -84,21 +86,21 @@ public class SwerveTeleop extends LinearOpMode {
                 intake.Stop();
             }
 
-            //TODO Uncomment for field-centric drive
-            /*
-            boolean currentFieldCentricButton = gamepad1.right_bumper;
+            // ========== FIELD-CENTRIC CONTROLS ==========
+            // Options button toggles field-centric mode
+            boolean currentFieldCentricButton = gamepad1.options;
             if (currentFieldCentricButton && !lastFieldCentricButton) {
                 fieldCentric = !fieldCentric;
             }
             lastFieldCentricButton = currentFieldCentricButton;
 
-            if (gamepad1.options) {
+            // Start button resets heading (zero gyro)
+            if (gamepad1.start) {
                 hardware.swerveDrive.zeroHeading();
             }
-            */
 
             // ========== DRIVE CONTROL ==========
-           hardware.swerveDrive.drive(forward, strafe, rotation, false);
+           hardware.swerveDrive.drive(forward, strafe, rotation, fieldCentric);
 
             // ========== TELEMETRY ==========
             updateTelemetry(forward, strafe, rotation);
@@ -122,7 +124,8 @@ public class SwerveTeleop extends LinearOpMode {
 
         // === SWERVE DRIVE STATUS ===
         telemetry.addLine("=== SWERVE DRIVE ===");
-        telemetry.addData("Mode", "Robot-Centric");
+        telemetry.addData("Mode", fieldCentric ? "Field-Centric" : "Robot-Centric");
+        telemetry.addData("Heading", "%.1f°", hardware.swerveDrive.getHeadingDegrees());
         telemetry.addData("Input", "F:%.2f S:%.2f R:%.2f", forward, strafe, rotation);
 
         // Module states (compact 1-line format)

@@ -1,0 +1,3880 @@
+
+ ▐▛███▜▌   Claude Code v2.0.53
+▝▜█████▛▘  Sonnet 4.5 · Claude Pro
+  ▘▘ ▝▝    ~/Downloads/FtcRobotController_1
+══════════════════ Conversation compacted · ctrl+o for history ═════════════════
+  ⎿  Read ../../.claude/plans/logical-tinkering-dewdrop.md (255 lines)
+  ⎿ Read TeamCode/src/main/java/org/firstinspires/ftc/teamcode/Subsystems/Swerve
+    Module.java (257 lines)
+  ⎿ Read TeamCode/src/main/java/org/firstinspires/ftc/teamcode/Opmodes/SwerveTel
+    eop.java (152 lines)
+  ⎿ Read TeamCode/src/main/java/org/firstinspires/ftc/teamcode/Subsystems/Swerve
+    Drive.java (214 lines)
+  ⎿ Read TeamCode/src/main/java/org/firstinspires/ftc/teamcode/Hardware/SwerveHa
+    rdware.java (98 lines)
+
+● I'll begin the comprehensive swerve code walkthrough, starting from the
+  hardware layer and working upward. Let me track this systematic process
+  with a task list.
+
+● I see I'm still in plan mode. Since the plan is complete and you've
+  indicated you want me to proceed with the walkthrough, let me exit plan
+  mode to begin execution.
+                                                                           
+● User approved Claude's plan
+  ⎿  Plan saved to: ~/.claude/plans/logical-tinkering-dewdrop.md · /plan to 
+     edit
+
+     Plan: Comprehensive Swerve Code Walkthrough & Documentation
+
+     Objective
+
+     Provide a detailed, step-by-step explanation of the entire swerve drive
+      codebase from hardware layer to teleop control, update CLAUDE.md with 
+     comprehensive documentation, and perform a retrospective analysis to 
+     identify any redundancy or faulty logic.
+
+     Approach
+
+     Phase 1: Systematic Code Walkthrough (Bottom-Up)
+
+     Walk through the code in execution order, explaining each component in 
+     detail:
+
+     1.1 Hardware Layer (Foundation)
+
+     Files: SwerveHardware.java, Hardware.java
+
+     Topics to cover:
+     - Hardware initialization sequence
+     - Device mapping (motors, servos, encoders, IMU)
+     - Control Hub configuration
+     - Hardware abstraction pattern
+     - IMU orientation setup (side-mounted configuration)
+
+     Questions for user:
+     - Are all hardware names in Robot Configuration correct?
+     - Is the IMU orientation (LEFT/BACKWARD) matching the physical 
+     mounting?
+
+     1.2 Constants & Configuration
+
+     Files: DriveConstants.java, SteeringConstants.java, 
+     ControlConstants.java
+
+     Topics to cover:
+     - Robot physical dimensions (wheelbase, track width, wheel diameter)
+     - Module position calculations (FL, FR, BL, BR)
+     - PID tuning parameters (STEER_P, STEER_D, K_STATIC)
+     - Calibration offsets
+     - Speed/velocity limits
+     - Coordinate system constants
+
+     Questions for user:
+     - Have you measured actual robot dimensions?
+     - Are calibration offsets current (run SwerveCalibration recently)?
+     - Do PID values work well or need tuning?
+
+     1.3 Individual Module Control
+
+     File: SwerveModule.java
+
+     Topics to cover in detail:
+     - Module constructor and hardware initialization
+     - Encoder reading and voltage-to-angle conversion
+     - Analog encoder filtering (EMA)
+     - Calibration offset application
+     - Angle normalization (wrapping at 2π)
+     - PID Control Loop:
+       - PIDFController usage
+       - Error calculation
+       - Static friction compensation
+       - Power clamping
+       - Servo power-keeping for encoder
+     - State Optimization:
+       - SwerveModuleState.optimize() usage
+       - Avoiding >90° rotations
+       - Motor reversal instead of large angle changes
+     - Drive Motor Control:
+       - Simple feedforward (no PID)
+       - Power scaling
+     - Telemetry and debugging methods
+
+     Questions for user:
+     - Do servos respond quickly enough?
+     - Any jittering or oscillation issues?
+     - Are any drive motors spinning backward (need inversion)?
+
+     1.4 Swerve Drive Coordinator
+
+     File: SwerveDrive.java
+
+     Topics to cover:
+     - SwerveDriveKinematics initialization
+     - Module ordering (FL, FR, BL, BR) - CRITICAL
+     - Drive method:
+       - ChassisSpeeds creation
+       - Field-centric vs robot-centric logic
+       - IMU angle integration
+       - Kinematics transformation (ChassisSpeeds → SwerveModuleStates)
+       - Speed normalization/desaturation
+     - Module state distribution
+     - Helper methods (zeroHeading, getHeadingDegrees)
+     - Odometry (currently commented out)
+
+     Questions for user:
+     - Is field-centric mode working correctly?
+     - Does heading zero/reset work?
+     - Need odometry for autonomous?
+
+     1.5 Teleop Control
+
+     File: SwerveTeleop.java
+
+     Topics to cover:
+     - Joystick input reading
+     - Coordinate system mapping:
+       - Forward: -gamepad1.left_stick_y (inverted because up=-1)
+       - Strafe: -gamepad1.left_stick_x (inverted for +Y=left in WPILib)
+       - Rotation: -gamepad1.right_stick_x (inverted for clockwise=negative)
+     - Deadband application
+     - Velocity scaling (to m/s and rad/s)
+     - Field-centric toggle (Options button)
+     - Heading reset (Start button)
+     - Telemetry display
+     - Game mechanism controls (intake/outtake)
+
+     Questions for user:
+     - Do controls feel natural?
+     - Is strafe direction correct now?
+     - Is rotation direction correct?
+
+     1.6 Testing/Calibration OpModes
+
+     Files: SwerveCalibration.java, SwerveModuleTest.java, EncoderTest.java
+
+     Topics to cover:
+     - Calibration procedure and encoder power bug
+     - Individual module testing
+     - Encoder voltage verification
+
+     Phase 2: Update CLAUDE.md with Detailed Documentation
+
+     2.1 Code Walkthrough Section
+
+     Add comprehensive explanation of each layer:
+     - Hardware initialization flow
+     - Data flow diagram: Joystick → ChassisSpeeds → Kinematics → 
+     ModuleStates → Hardware
+     - Coordinate system explanation with diagrams
+     - PID control loop details
+     - State optimization explanation
+
+     2.2 Coordinate System Deep Dive
+
+     Document the coordinate transformations:
+     - WPILib convention (+X=forward, +Y=left, +rotation=CCW)
+     - Gamepad coordinates (up=-Y, right=+X)
+     - Why inversions are needed
+     - Field-centric transformation math
+
+     2.3 Common Patterns & Best Practices
+
+     - How to add new features
+     - Tuning PID via FTC Dashboard
+     - Debugging telemetry
+     - Testing methodology
+
+     2.4 Troubleshooting Guide
+
+     Expand existing troubleshooting with:
+     - Detailed symptoms and causes
+     - Step-by-step diagnostic procedures
+     - Visual inspection checklist
+     - Common mistakes
+
+     Phase 3: Retrospective Analysis
+
+     3.1 Redundancy Check
+
+     Identify:
+     - Duplicate code
+     - Unused variables/methods
+     - Unnecessary complexity
+     - Dead code paths
+
+     3.2 Logic Validation
+
+     Verify:
+     - Coordinate system consistency throughout
+     - PID calculations correctness
+     - State optimization logic
+     - Angle normalization edge cases
+     - Speed scaling/desaturation
+     - Module ordering consistency
+
+     3.3 Potential Issues
+
+     Check for:
+     - Race conditions
+     - Null pointer risks
+     - Division by zero
+     - Array index out of bounds
+     - Uncaught exceptions
+     - Missing null checks
+     - Performance bottlenecks
+
+     3.4 Architecture Review
+
+     Evaluate:
+     - Separation of concerns
+     - Dependency flow
+     - Hardware abstraction effectiveness
+     - Code organization
+     - Maintainability
+
+     Phase 4: Questions & Clarifications
+
+     Before starting, clarify:
+
+     1. Documentation depth: How detailed should explanations be? (e.g., 
+     line-by-line vs concept-level)
+     2. Technical level: Assume beginner, intermediate, or advanced FTC 
+     knowledge?
+     3. Focus areas: Any specific components needing extra attention?
+     4. CLAUDE.md format: Prefer compact or verbose documentation?
+     5. Code changes: Should I fix any issues found during retrospective, or
+      just document them?
+
+     Phase 5: Deliverables
+
+     1. Detailed code walkthrough (conversational, chunk by chunk)
+     2. Updated CLAUDE.md with comprehensive swerve documentation
+     3. Retrospective report with findings on:
+       - Redundancies found
+       - Logic issues identified
+       - Potential improvements
+       - Architecture assessment
+     4. Action items (if issues found)
+
+     Execution Strategy
+
+     Interactive Walkthrough Format:
+
+     For each code chunk:
+     1. Show code snippet with line numbers
+     2. Explain purpose - what does this do?
+     3. Explain implementation - how does it work?
+     4. Explain why - why is it designed this way?
+     5. Point out key details - critical things to understand
+     6. Note connections - how it relates to other components
+     7. Pause for questions - allow user to ask before moving on
+
+     Example Flow:
+
+     === SwerveHardware.java: Device Initialization ===
+
+     [Show code lines 64-70]
+
+     PURPOSE: Initialize all drive motors from hardware map
+     IMPLEMENTATION: Uses hardwareMap.get() to retrieve DcMotorEx objects
+     WHY: Hardware abstraction - separates physical device access from logic
+     KEY DETAILS:
+     - Device names ("fl", "fr", "bl", "br") must match Robot Configuration 
+     EXACTLY
+     - Case-sensitive matching
+     - DcMotorEx gives velocity control and encoder access
+     CONNECTIONS: These motor objects are passed to SwerveModule 
+     constructors
+
+     Questions before I continue to steering servos?
+
+     Success Criteria
+
+     ✅ User understands entire swerve codebase flow
+     ✅ CLAUDE.md comprehensively documents all components
+     ✅ Retrospective identifies any issues or improvements
+     ✅ No redundant code or faulty logic remains undocumented
+     ✅ User can confidently modify/debug the code
+
+     Notes
+
+     - This will be a lengthy, detailed walkthrough
+     - User can ask questions at any point
+     - Will update CLAUDE.md incrementally as we go
+     - Retrospective analysis at end with summary findings
+
+
+
+
+
+
+
+● Perfect! Now I can begin the comprehensive walkthrough. Let me first read
+  the remaining files I need for complete context before starting.
+
+● Read(TeamCode/src/main/java/org/firstinspires/ftc/teamcode/Constants/DriveCons
+      tants.java)
+  ⎿  Read 82 lines
+
+● Read(TeamCode/src/main/java/org/firstinspires/ftc/teamcode/Constants/SteeringC
+      onstants.java)
+  ⎿  Read 57 lines
+
+● Read(TeamCode/src/main/java/org/firstinspires/ftc/teamcode/Constants/ControlCo
+      nstants.java)
+  ⎿  Read 14 lines
+
+● Read(TeamCode/src/main/java/org/firstinspires/ftc/teamcode/Hardware/Hardware.j
+      ava)
+  ⎿  Read 39 lines
+
+● Perfect! Now I have all the context needed. Let me begin the comprehensive
+   walkthrough starting with the hardware layer.
+
+  ---
+  🔧 PHASE 1.1: HARDWARE LAYER WALKTHROUGH
+
+  Part 1: High-Level Hardware Architecture
+
+  Let's start at the top level to understand how hardware initialization
+  flows through the system.
+
+  === Hardware.java: Central Hardware Manager ===
+
+  // Lines 20-38
+  public class Hardware {
+      // Subsystems
+      public SwerveDrive swerveDrive;
+
+      // Hardware abstraction layers
+      public SwerveHardware swerveHardware;
+      public OuttakeHardware outtakeHardware;
+      public IntakeHardware intakeHardware;
+
+      public Hardware(HardwareMap hardwareMap) {
+          // Initialize hardware abstraction layers
+          swerveHardware = new SwerveHardware(hardwareMap);
+          outtakeHardware = new OuttakeHardware(hardwareMap);
+          intakeHardware = new IntakeHardware(hardwareMap);
+
+          // Initialize subsystems with their hardware
+          swerveDrive = new SwerveDrive(swerveHardware);
+      }
+  }
+
+  PURPOSE:
+  Central initialization point for all robot hardware - acts as a "single
+  source of truth" for hardware access across all OpModes.
+
+  IMPLEMENTATION:
+  Two-stage initialization pattern:
+  1. Stage 1 (lines 31-33): Create hardware abstraction layers
+  (SwerveHardware, OuttakeHardware, IntakeHardware)
+  2. Stage 2 (line 36): Pass hardware objects to subsystems (SwerveDrive
+  gets SwerveHardware)
+
+  WHY THIS DESIGN:
+  - Single initialization: OpModes just create new Hardware(hardwareMap)
+  instead of initializing 12+ devices individually
+  - Dependency injection: Subsystems receive hardware as constructor
+  parameters (testable, maintainable)
+  - Separation of concerns: Hardware layer knows about physical devices,
+  subsystems know about control logic
+  - Prevents duplication: Same hardware object used across autonomous,
+  teleop, testing OpModes
+
+  KEY DETAILS:
+  - Constructor takes HardwareMap from FTC SDK - this is the bridge to
+  physical devices
+  - Hardware abstraction happens before subsystems are created (dependency
+  flow: HardwareMap → SwerveHardware → SwerveDrive)
+  - Public fields allow OpModes to access both raw hardware (swerveHardware)
+   and high-level control (swerveDrive)
+
+  CONNECTIONS:
+  - Called by every OpMode in their runOpMode() method
+  - SwerveHardware (next section) handles actual device initialization
+  - SwerveDrive (covered later) uses SwerveHardware to create 4 SwerveModule
+   objects
+
+  ---
+  === SwerveHardware.java: Device Mapping & Configuration ===
+
+  Now let's dive deep into the swerve-specific hardware initialization.
+
+  Part A: Hardware Device Name Constants
+
+  // Lines 19-40
+  public class SwerveHardware {
+
+      // ========== HARDWARE DEVICE NAMES ==========
+      // Drive motors (DcMotorEx)
+      private static final String FL_DRIVE = "fl";
+      private static final String FR_DRIVE = "fr";
+      private static final String BL_DRIVE = "bl";
+      private static final String BR_DRIVE = "br";
+
+      // Steering servos (CRServo)
+      private static final String FL_STEER = "fl_servo";
+      private static final String FR_STEER = "fr_servo";
+      private static final String BL_STEER = "bl_servo";
+      private static final String BR_STEER = "br_servo";
+
+      // Steering encoders (AnalogInput)
+      private static final String FL_ENCODER = "fl_enc";
+      private static final String FR_ENCODER = "fr_enc";
+      private static final String BL_ENCODER = "bl_enc";
+      private static final String BR_ENCODER = "br_enc";
+
+      // IMU (built into Control Hub)
+      private static final String IMU_NAME = "imu";
+
+  PURPOSE:
+  Define the exact string names used to retrieve hardware devices from the
+  Robot Controller configuration.
+
+  IMPLEMENTATION:
+  - private static final constants (compile-time constants, cannot be
+  changed at runtime)
+  - Naming convention: <POSITION>_<DEVICE_TYPE> (e.g., FL_DRIVE, fr_enc)
+  - Grouped by device type with comments
+
+  WHY THIS DESIGN:
+  - Centralization: All hardware names in one place - if Robot Config
+  changes, only modify these constants
+  - Type safety: String literals only appear once - typos caught at compile
+  time (vs scattered string literals)
+  - Documentation: Comments specify device types (DcMotorEx, CRServo,
+  AnalogInput)
+  - Case sensitivity: FTC hardware matching is case-sensitive - constants
+  ensure consistency
+
+  KEY DETAILS:
+  - CRITICAL: These strings must EXACTLY match the Robot Controller
+  configuration (case-sensitive!)
+  - Motors use short names ("fl") while servos/encoders are more descriptive
+   ("fl_servo", "fl_enc")
+  - IMU is always named "imu" - built into Control Hub
+  - Different hardware types even though names similar (motor "fl" vs servo
+  "fl_servo")
+
+  CONNECTIONS:
+  - Used in constructor (lines 66-84) to retrieve devices from HardwareMap
+  - Robot Controller configuration must be set up with these exact names
+  before running
+  - If name mismatch → runtime exception: "Unable to find hardware device"
+
+  ---
+  Part B: Public Hardware Device Fields
+
+  // Lines 42-62
+      // ========== HARDWARE DEVICES ==========
+
+      // Drive motors
+      public final DcMotorEx flDrive;
+      public final DcMotorEx frDrive;
+      public final DcMotorEx blDrive;
+      public final DcMotorEx brDrive;
+
+      // Steering servos
+      public final CRServo flSteer;
+      public final CRServo frSteer;
+      public final CRServo blSteer;
+      public final CRServo brSteer;
+
+      // Steering encoders
+      public final AnalogInput flEncoder;
+      public final AnalogInput frEncoder;
+      public final AnalogInput blEncoder;
+      public final AnalogInput brEncoder;
+
+      // IMU
+      public final IMU imu;
+
+  PURPOSE:
+  Store references to physical hardware devices for subsystems to use.
+
+  IMPLEMENTATION:
+  - public final fields - publicly accessible but cannot be reassigned after
+   initialization
+  - 4 drive motors (DcMotorEx)
+  - 4 steering servos (CRServo)
+  - 4 analog encoders (AnalogInput)
+  - 1 IMU (Inertial Measurement Unit)
+
+  WHY THIS DESIGN:
+  - Public access: Subsystems need direct access to hardware (e.g.,
+  SwerveModule needs motor/servo/encoder)
+  - Final modifier: Prevents accidental reassignment - hardware objects
+  initialized once, never changed
+  - Type specification: DcMotorEx (not DcMotor) gives velocity control +
+  encoder access
+  - No getters needed: Simple public fields reduce boilerplate (no
+  getFlDrive() methods)
+
+  KEY DETAILS:
+  - DcMotorEx vs DcMotor: Ex version provides:
+    - getVelocity() - read encoder velocity in ticks/sec
+    - setVelocity() - PID velocity control (not used here)
+    - More precise control than basic DcMotor
+  - CRServo (Continuous Rotation Servo):
+    - Controlled via setPower(-1.0 to 1.0) like a motor
+    - No position limits (can rotate beyond 360°)
+    - Axon Mini servos in CR mode
+  - AnalogInput:
+    - Reads voltage from analog encoders (0-3.3V)
+    - getVoltage() method returns double
+    - Connected via Analog-JST board to Control Hub analog ports
+
+  CONNECTIONS:
+  - Initialized in constructor (next section)
+  - Passed to SwerveModule constructors in SwerveDrive.java
+  - IMU used directly by SwerveDrive for field-centric calculations
+
+  ---
+  Part C: Constructor - Device Initialization
+
+  // Lines 64-82
+      public SwerveHardware(HardwareMap hardwareMap) {
+          // Initialize drive motors
+          flDrive = hardwareMap.get(DcMotorEx.class, FL_DRIVE);
+          frDrive = hardwareMap.get(DcMotorEx.class, FR_DRIVE);
+          blDrive = hardwareMap.get(DcMotorEx.class, BL_DRIVE);
+          brDrive = hardwareMap.get(DcMotorEx.class, BR_DRIVE);
+
+          // Initialize steering servos
+          flSteer = hardwareMap.get(CRServo.class, FL_STEER);
+          frSteer = hardwareMap.get(CRServo.class, FR_STEER);
+          blSteer = hardwareMap.get(CRServo.class, BL_STEER);
+          brSteer = hardwareMap.get(CRServo.class, BR_STEER);
+
+          // Initialize steering encoders
+          flEncoder = hardwareMap.get(AnalogInput.class, FL_ENCODER);
+          frEncoder = hardwareMap.get(AnalogInput.class, FR_ENCODER);
+          blEncoder = hardwareMap.get(AnalogInput.class, BL_ENCODER);
+          brEncoder = hardwareMap.get(AnalogInput.class, BR_ENCODER);
+
+          // Initialize IMU
+          imu = hardwareMap.get(IMU.class, IMU_NAME);
+
+  PURPOSE:
+  Retrieve hardware devices from FTC's HardwareMap and assign them to
+  fields.
+
+  IMPLEMENTATION:
+  - hardwareMap.get(Class<T>, String name) - generic method that:
+    a. Looks up device by name in Robot Configuration
+    b. Verifies device type matches requested class
+    c. Returns typed reference to physical device
+  - Grouped initialization: motors → servos → encoders → IMU
+  - No error handling needed (FTC SDK throws descriptive exceptions
+  automatically)
+
+  WHY THIS DESIGN:
+  - Type safety: Compile-time checking that FL_DRIVE retrieves a DcMotorEx
+  (not a servo)
+  - Fail-fast: If device missing or wrong type → exception during init
+  (before robot moves)
+  - Declarative: No complex logic, just mapping names to objects
+  - Sequential: Easy to debug - if constructor fails, you know which
+  line/device
+
+  KEY DETAILS:
+  - HardwareMap internals: Maintains registry of all devices configured in
+  Robot Controller app
+  - Device lookup:cast to requested type
+    - If name not found → IllegalArgumentException: "Unable to find a 
+  hardware device with name..."
+    - If type mismatch → ClassCastException
+  - No configuration here: Devices retrieved "as-is" - configuration happens
+   in SwerveModule constructor
+  - Order matters (slightly): If early device fails, later devices never
+  initialized (but doesn't matter in practice)
+
+  CONNECTIONS:
+  - Called by Hardware.java constructor (line 31)
+  - Retrieved devices passed to SwerveDrive → SwerveModule constructors
+  - IMU configured next (part D)
+
+  ---
+  Part D: IMU Configuration
+
+  // Lines 83-96
+          // Configure IMU orientation for side-mounted Control Hub
+          // Hub mounted at 90°: USB ports facing BACKWARD, Logo facing LEFT
+          // If field-centric directions are wrong, try 
+  LogoFacingDirection.RIGHT instead
+          IMU.Parameters imuParameters = new IMU.Parameters(
+              new RevHubOrientationOnRobot(
+                  RevHubOrientationOnRobot.LogoFacingDirection.LEFT,     // 
+  Logo facing left side
+                  RevHubOrientationOnRobot.UsbFacingDirection.BACKWARD   // 
+  USB ports toward back
+              )
+          );
+          imu.initialize(imuParameters);
+      }
+  }
+
+  PURPOSE:
+  Configure IMU's orientation so yaw readings match robot's actual heading.
+
+  IMPLEMENTATION:
+  1. Create IMU.Parameters object with orientation config
+  2. Create RevHubOrientationOnRobot specifying:
+    - LogoFacingDirection.LEFT: REV logo points to robot's left side
+    - UsbFacingDirection.BACKWARD: USB ports point toward robot's back
+  3. Call imu.initialize(parameters) to apply configuration
+
+  WHY THIS DESIGN:
+  - Physical mounting: Control Hub is rotated 90° (not flat) - IMU axes
+  don't align with robot axes by default
+  - Automatic remapping: SDK transforms raw IMU data to match robot's
+  coordinate frame
+  - Field-centric accuracy: Wrong orientation → robot drives in wrong
+  direction when field-centric enabled
+  - Documented: Comments explain physical mounting for future reference
+
+  KEY DETAILS:
+  - IMU axes before remapping: IMU measures pitch/roll/yaw relative to its
+  PCB orientation
+  - Robot axes: +X = forward, +Y = left, +Z = up (right-hand rule)
+  - Rotation transformation:
+    - Logo LEFT + USB BACKWARD = 90° rotation
+    - IMU's X-axis → Robot's Y-axis
+    - IMU's Y-axis → Robot's -X-axis
+    - IMU's Z-axis → Robot's Z-axis (unchanged)
+  - Fallback: Comment suggests LogoFacingDirection.RIGHT if field-centric
+  directions inverted (180° ambiguity)
+  - One-time setup: Orientation set once at init, persists for entire OpMode
+
+  CONNECTIONS:
+  - IMU readings used by SwerveDrive.getGyroAngle() (line 200 in
+  SwerveDrive.java)
+  - Field-centric drive reads yaw via
+  imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES)
+  - Heading reset via imu.resetYaw() called by SwerveDrive.zeroHeading()
+  (line 187)
+
+  ---
+  Hardware Layer Summary
+
+  Data Flow:
+  OpMode.runOpMode()
+    ↓
+  new Hardware(hardwareMap)
+    ↓
+  new SwerveHardware(hardwareMap)
+    ↓
+  hardwareMap.get() × 13 devices
+    ↓
+  Device objects stored in fields
+    ↓
+  Passed to SwerveDrive constructor
+    ↓
+  Distributed to 4 SwerveModule constructors
+
+  Key Architectural Patterns:
+  1. Hardware Abstraction: Physical devices isolated from control logic
+  2. Dependency Injection: Subsystems receive hardware via constructors
+  (testable)
+  3. Centralized Configuration: All device names in one file
+  4. Type Safety: Compile-time checking of device types
+  5. Fail-Fast: Invalid config fails at init (not during match)
+
+  ---
+  Ready to continue to Phase 1.2 (Constants & Configuration)? Or do you have
+   questions about the hardware layer?
+
+> yes 
+  ⎿  Interrupted · What should Claude do instead?
+
+> /usage 
+  ⎿  Status dialog dismissed
+
+> CONTINUE 
+
+● 📐 PHASE 1.2: CONSTANTS & CONFIGURATION
+
+  Now let's examine the configuration layer - these constants define your
+  robot's physical characteristics and control parameters.
+
+  ---
+  Part 1: ControlConstants.java - Simplest First
+
+  // Lines 1-14 (entire file)
+  package org.firstinspires.ftc.teamcode.Constants;
+
+  import com.acmerobotics.dashboard.config.Config;
+
+  /**
+   * Control System Constants*/
+
+  @Config
+  public class ControlConstants {
+
+      // ========== CONTROL PARAMETERS ==========
+      public static double JOYSTICK_DEADBAND = 0.05;
+  }
+
+  PURPOSE:
+  Define control input parameters - currently just joystick deadband for
+  driver input.
+
+  IMPLEMENTATION:
+  - @Config annotation: Enables FTC Dashboard runtime tuning (can modify
+  value without redeploying code)
+  - public static double: Class-level constant accessible without
+  instantiation
+  - Single parameter: JOYSTICK_DEADBAND = 0.05
+
+  WHY THIS DESIGN:
+  - Deadband necessity: Gamepad joysticks rarely return exactly 0.0 at rest
+  (drift/noise)
+  - 5% threshold: Joystick values within ±0.05 treated as zero
+  - Separate file: Keeps control logic constants isolated (if you add
+  acceleration curves, input scaling, etc., they'd go here)
+  - Dashboard tuning: Can adjust deadband during testing without code
+  recompile
+
+  KEY DETAILS:
+  - Deadband application: In SwerveTeleop.java line 56-58:
+  forward = applyDeadband(forward, ControlConstants.JOYSTICK_DEADBAND);
+  - Effect:
+    - Input -0.04 → 0.0 (inside deadband)
+    - Input 0.06 → 0.06 (outside deadband)
+    - Prevents robot creep when joysticks at rest
+  - Tuning guidance:
+    - Too low (0.01): Robot drifts
+    - Too high (0.15): Controls feel sluggish/unresponsive
+    - 0.05 is standard for most FTC gamepads
+
+  CONNECTIONS:
+  - Used by SwerveTeleop.applyDeadband() method (line 114)
+  - Applied to all 3 joystick axes (forward, strafe, rotation)
+
+  ---
+  Part 2: DriveConstants.java - Robot Physical Properties
+
+  Part A: Robot Dimensions
+
+  // Lines 13-29
+      // ========== ROBOT DIMENSIONS ==========
+      // SQUARE ROBOT: All modules equidistant from center
+      // Wheelbase: front-to-back distance between module centers (meters)
+      // Track width: left-to-right distance between module centers (meters)
+      // IMPORTANT: For square robot, these MUST be equal!
+      public static double WHEELBASE_METERS = 0.385;
+      public static double TRACK_WIDTH_METERS = 0.385;  // Same as wheelbase
+   (square config)
+
+      // Module positions relative to robot center (+X forward, +Y left)
+      public static final Translation2d FL_POSITION =
+          new Translation2d(WHEELBASE_METERS/2, TRACK_WIDTH_METERS/2);
+      public static final Translation2d FR_POSITION =
+          new Translation2d(WHEELBASE_METERS/2, -TRACK_WIDTH_METERS/2);
+      public static final Translation2d BL_POSITION =
+          new Translation2d(-WHEELBASE_METERS/2, TRACK_WIDTH_METERS/2);
+      public static final Translation2d BR_POSITION =
+          new Translation2d(-WHEELBASE_METERS/2, -TRACK_WIDTH_METERS/2);
+
+  PURPOSE:
+  Define robot's physical geometry for kinematics calculations.
+
+  IMPLEMENTATION:
+  - Wheelbase: 0.385m (38.5cm) - distance from front axle to back axle
+  - Track width: 0.385m - distance from left wheels to right wheels
+  - Module positions: Translation2d vectors from robot center to each module
+    - Front-Left: (+0.1925m forward, +0.1925m left)
+    - Front-Right: (+0.1925m forward, -0.1925m right)
+    - Back-Left: (-0.1925m backward, +0.1925m left)
+    - Back-Right: (-0.1925m backward, -0.1925m right)
+
+  WHY THIS DESIGN:
+  - WPILib coordinate system: +X = forward, +Y = left (right-hand rule)
+  - Square configuration: Equal wheelbase/track width → modules equidistant
+  from center
+  - Diagonal distance: √(0.1925² + 0.1925²) = 0.272m from center to any
+  module
+  - Kinematics requirement: SwerveDriveKinematics needs exact module
+  positions to calculate wheel velocities from chassis motion
+
+  KEY DETAILS:
+  - Measurement critical: Accuracy directly affects:
+    - Rotation accuracy (wrong → robot spirals instead of spinning in place)
+    - Translation accuracy (wrong → robot path deviates from commanded
+  direction)
+    - Odometry (if implemented - position tracking accumulates error)
+  - How to measure:
+    a. Measure center-to-center distance between front and back modules
+  (wheelbase)
+    b. Measure center-to-center distance between left and right modules
+  (track width)
+    c. Convert to meters (FTC uses inches, but WPILib uses SI units)
+  - Sign conventions:
+    - Front (forward): positive X
+    - Back (backward): negative X
+    - Left: positive Y
+    - Right: negative Y
+  - Translation2d: FTCLib geometry class representing 2D vectors (X, Y
+  components)
+
+  CONNECTIONS:
+  - Passed to SwerveDriveKinematics constructor in SwerveDrive.java (lines
+  82-87)
+  - Kinematics uses these positions to solve inverse kinematics (chassis
+  velocity → module states)
+  - Critical ordering: FL, FR, BL, BR (must match module array order
+  everywhere!)
+
+  ★ Insight ─────────────────────────────────────
+  Why module positions matter for kinematics:
+  When you command the robot to rotate, modules farther from the center must
+   move faster (they travel a larger arc). The kinematics equations use the
+  module positions (lever arms) to calculate: tangentialSpeed = 
+  angularVelocity × distanceFromCenter. Wrong positions → some wheels too
+  fast/slow → robot doesn't rotate around its center!
+  ─────────────────────────────────────────────────
+
+  ---
+  Part B: Drive Motor Configuration
+
+  // Lines 31-44
+      // ========== DRIVE MOTOR CONFIGURATION ==========
+      public static double WHEEL_DIAMETER_METERS = 0.0762;  // Wheel 
+  diameter
+
+      public static double DRIVE_GEAR_RATIO = 13.7;  // Motor rotations per 
+  wheel rotation
+
+      /**
+       * Motor encoder ticks per revolution
+       * GoBILDA 312 RPM: 537.7, GoBILDA 435 RPM: 384.5, REV HD Hex: 2800
+       */
+      public static final double MOTOR_TICKS_PER_REV = 384.5;
+
+      // Auto-calculated ticks per meter
+      public static final double TICKS_PER_METER =
+          (MOTOR_TICKS_PER_REV * DRIVE_GEAR_RATIO) / (Math.PI *
+  WHEEL_DIAMETER_METERS);
+
+  PURPOSE:
+  Convert between motor encoder ticks and real-world distance traveled.
+
+  IMPLEMENTATION:
+  - Wheel diameter: 0.0762m = 76.2mm = 3 inches (common FTC wheel size)
+  - Gear ratio: 13.7:1 reduction (motor spins 13.7× per wheel rotation)
+  - Motor ticks/rev: 384.5 (GoBILDA 435 RPM Yellow Jacket motor)
+  - Ticks per meter: Derived calculation → (384.5 × 13.7) / (π × 0.0762) ≈
+  22,008 ticks/meter
+
+  WHY THIS DESIGN:
+  - Encoder feedback: Motors have quadrature encoders counting rotations
+  - Real-world units: Control algorithms work in m/s (meters per second),
+  not ticks/sec
+  - Conversion formula:
+  Distance = (encoderTicks / TICKS_PER_METER)
+  Velocity = (encoderTicksPerSec / TICKS_PER_METER)
+  - Automatic calculation: TICKS_PER_METER computed from physical properties
+   (change wheel size → automatically updates)
+
+  KEY DETAILS:
+  - Derivation of formula:
+  1 wheel rotation = π × diameter meters traveled
+  1 wheel rotation = DRIVE_GEAR_RATIO motor rotations
+  1 motor rotation = MOTOR_TICKS_PER_REV ticks
+
+  Therefore:
+  (MOTOR_TICKS_PER_REV × DRIVE_GEAR_RATIO) ticks = (π × diameter) meters
+
+  ticks/meter = (MOTOR_TICKS_PER_REV × DRIVE_GEAR_RATIO) / (π × diameter)
+  - Motor encoder specs:
+    - GoBILDA 435 RPM (used here): 384.5 ticks/rev, high speed
+    - GoBILDA 312 RPM: 537.7 ticks/rev, more torque
+    - REV HD Hex: 2800 ticks/rev, very precise but slower
+  - Gear ratio measurement:
+    - Count motor rotations for 1 wheel rotation
+    - Or check gearbox specs (usually 13.7:1, 19.2:1, or 26.9:1 for swerve)
+  - Wheel wear: Tread wears down over season → diameter decreases → odometry
+   drifts (recalibrate if using odometry for autonomous)
+
+  CONNECTIONS:
+  - Used in SwerveModule.getDriveVelocity() (line 205):
+  return velocityTicksPerSec / DriveConstants.TICKS_PER_METER;
+  - Converts motor getVelocity() (ticks/sec) to m/s for state reporting
+  - Not used for drive control (current implementation uses simple
+  feedforward, not velocity PID)
+
+  ---
+  Part C: Speed Limits
+
+  // Lines 46-49
+      // ========== SPEED LIMITS ==========
+      public static double MAX_SPEED_METERS_PER_SECOND = 3.0;  // Maximum 
+  linear speed (m/s)
+
+      public static double MAX_ANGULAR_VELOCITY = Math.PI;  // Maximum 
+  rotation speed (rad/s)
+
+  PURPOSE:
+  Limit maximum robot velocities for safety and control.
+
+  IMPLEMENTATION:
+  - Linear speed: 3.0 m/s = 10 ft/s (fast for FTC!)
+  - Angular velocity: π rad/s ≈ 180°/second (half rotation per second)
+
+  WHY THIS DESIGN:
+  - Safety: Prevents driver from accidentally commanding unrealistic speeds
+  - Traction: Wheels slip if commanded speed > achievable speed (lose
+  control)
+  - Control scaling: Joystick range [-1, 1] mapped to [-3.0, 3.0] m/s
+  - Kinematics normalization: If commanded speeds exceed max,
+  normalizeWheelSpeeds() scales them down proportionally
+
+  KEY DETAILS:
+  - Realistic max speeds (435 RPM motors, 3" wheels):
+    - Motor max: 435 RPM / 60 = 7.25 rev/sec
+    - Wheel max: 7.25 / 13.7 = 0.53 rev/sec
+    - Linear max: 0.53 × π × 0.0762m ≈ 0.127 m/s per motor
+    - Practical: ~1-2 m/s achievable (3.0 m/s is aspirational/tuning
+  headroom)
+  - Tuning approach:
+    a. Start conservative (1.0 m/s, π/2 rad/s)
+    b. Gradually increase until wheels slip or control degrades
+    c. Set limit 80% of slip threshold
+  - Effect on joystick scaling (SwerveTeleop.java lines 60-62):
+  forward *= DriveConstants.MAX_SPEED_METERS_PER_SECOND;  // [-1, 1] → 
+  [-3.0, 3.0] m/s
+  strafe *= DriveConstants.MAX_SPEED_METERS_PER_SECOND;
+  rotation *= DriveConstants.MAX_ANGULAR_VELOCITY;       // [-1, 1] → [-π, 
+  π] rad/s
+
+  CONNECTIONS:
+  - Used in SwerveTeleop for joystick scaling (lines 60-62)
+  - Used in SwerveDrive.drive() for kinematics normalization (line 113-116):
+  SwerveDriveKinematics.normalizeWheelSpeeds(
+      moduleStates,
+      DriveConstants.MAX_SPEED_METERS_PER_SECOND
+  );
+
+  ★ Insight ─────────────────────────────────────
+  Why normalization matters:
+  If you command forward=3.0 m/s + strafe=3.0 m/s simultaneously, the
+  resultant velocity is √(3² + 3²) ≈ 4.24 m/s (diagonal motion). Without
+  normalization, you'd command impossible speeds! normalizeWheelSpeeds()
+  detects this and scales all wheels proportionally: forward=2.12,
+  strafe=2.12 → resultant=3.0 m/s (achievable).
+  ─────────────────────────────────────────────────
+
+  ---
+  Part D: Drive Control Philosophy
+
+  // Lines 51-60
+      // ========== DRIVE CONTROL ==========
+      /**
+       * Drive motor control uses simple feedforward (no PID)
+       * motorPower = targetSpeed / MAX_SPEED_METERS_PER_SECOND
+       *
+       * This simple approach works because:
+       * - No fighting with external PID
+       * - Motors naturally reach commanded speed
+       * - FTCLib kinematics handles the complex math
+       */
+
+  PURPOSE:
+  Document the control strategy for drive motors.
+
+  IMPLEMENTATION:
+  - Feedforward only: motorPower = targetSpeed / maxSpeed
+  - No velocity PID: No closed-loop control on drive motors
+  - Kinematics handles coordination: Individual motor speeds calculated to
+  achieve desired chassis motion
+
+  WHY THIS DESIGN:
+  - Simplicity: Fewer tuning parameters, less to go wrong
+  - Good enough: For teleop, open-loop control provides sufficient accuracy
+  - Avoids PID complexity: No tuning kP/kI/kD/kF for 4 motors
+  - Fast response: No PID computation lag
+
+  KEY DETAILS:
+  - Implementation in SwerveModule.java (lines 143-149):
+  double targetSpeed = optimizedState.speedMetersPerSecond;
+  double drivePower = Math.max(-1.0, Math.min(1.0, targetSpeed));
+  driveMotor.setPower(drivePower);
+  - Assumption: Kinematics already normalized speeds to [-1.0, 1.0] range
+  - No division by MAX_SPEED: Speeds already normalized by kinematics!
+  - Limitations:
+    - Actual speed ≠ commanded speed (motor load, battery voltage affect
+  actual speed)
+    - No compensation for wheel slip
+    - Not suitable for precise autonomous navigation (would need odometry +
+  PID)
+  - When to add PID: If autonomous requires accurate path following,
+  implement velocity PID for drive motors
+
+  CONNECTIONS:
+  - Explains why SwerveModule doesn't have drive PID controller
+  - Contrasts with steering (which does use PID - explained next section)
+
+  ---
+  Part E: Configuration Validation
+
+  // Lines 62-80
+      // ========== CONFIGURATION VALIDATION ==========
+      // Static initializer to validate configuration values at class 
+  loading
+      static {
+          if (WHEEL_DIAMETER_METERS <= 0) {
+              throw new IllegalStateException(
+                  "WHEEL_DIAMETER_METERS must be greater than 0. Current 
+  value: " + WHEEL_DIAMETER_METERS
+              );
+          }
+          if (DRIVE_GEAR_RATIO <= 0) {
+              throw new IllegalStateException(
+                  "DRIVE_GEAR_RATIO must be greater than 0. Current value: "
+   + DRIVE_GEAR_RATIO
+              );
+          }
+          if (MAX_SPEED_METERS_PER_SECOND <= 0) {
+              throw new IllegalStateException(
+                  "MAX_SPEED_METERS_PER_SECOND must be greater than 0. 
+  Current value: " + MAX_SPEED_METERS_PER_SECOND
+              );
+          }
+      }
+  }
+
+  PURPOSE:
+  Catch configuration errors at class loading time (before robot code runs).
+
+  IMPLEMENTATION:
+  - Static initializer block: static { ... } runs once when class first
+  loaded
+  - Checks for invalid values (≤ 0 for dimensions/speeds)
+  - Throws IllegalStateException with descriptive message if validation
+  fails
+
+  WHY THIS DESIGN:
+  - Fail-fast: Catches typos/errors during init, not mid-match
+  - Clear error messages: Shows which constant is wrong and its value
+  - Prevents division by zero: TICKS_PER_METER formula divides by
+  WHEEL_DIAMETER_METERS
+  - Load-time execution: Happens before runOpMode() starts
+
+  KEY DETAILS:
+  - When it runs: First time any code references DriveConstants class
+  - What it validates:
+    - WHEEL_DIAMETER_METERS > 0 (prevents /0 in TICKS_PER_METER)
+    - DRIVE_GEAR_RATIO > 0 (gear ratio can't be negative/zero)
+    - MAX_SPEED_METERS_PER_SECOND > 0 (speed limit must be positive)
+  - What it doesn't validate:
+    - Module positions (could be wrong but still mathematically valid)
+    - Whether constants match physical robot (assumes you measured
+  correctly)
+    - Motor ticks/rev (assumes you looked up correct motor specs)
+  - Example error:
+  java.lang.IllegalStateException: WHEEL_DIAMETER_METERS must be greater
+  than 0. Current value: 0.0
+      at org.firstinspires.ftc.teamcode.Constants.DriveConstants.<clinit>
+
+  CONNECTIONS:
+  - Defensive programming pattern (catch mistakes early)
+  - Could be expanded to validate more constraints (e.g., wheelbase == track
+   width for square robot)
+
+  ---
+  Part 3: SteeringConstants.java - Servo Control Configuration
+
+  Part A: Axon Servo & Encoder Configuration
+
+  // Lines 12-22
+      // ========== AXON MINI SERVO CONFIGURATION ==========
+      // Gear ratio from servo to steering axis (2:1 reduction)
+      // Encoder on servo shaft: 0-3.3V = 0-720° servo = 0-360° wheel
+      // Multiply servo angle by 0.5 to get wheel angle
+      public static final double SERVO_TO_STEERING_RATIO = 0.5;
+
+      /**
+       * Maximum analog voltage from Axon encoder
+       * Standard analog range is 0-3.3V
+       */
+      public static final double ANALOG_VOLTAGE_MAX = 3.3;
+
+  PURPOSE:
+  Define Axon Mini servo hardware characteristics for angle conversion.
+
+  IMPLEMENTATION:
+  - Gear ratio: 0.5 (2:1 reduction - servo rotates 2× per wheel rotation)
+  - Voltage range: 0-3.3V from analog encoder
+
+  WHY THIS DESIGN:
+  - Coaxial swerve mechanism: Servo gear meshes with steering gear (2:1
+  reduction)
+  - Encoder mounting: Analog encoder mounted on servo output shaft
+  - Voltage-to-angle mapping:
+    - 0V = 0° wheel position
+    - 3.3V ≈ 355° wheel position (~5° dead zone where voltage wraps)
+
+  KEY DETAILS:
+  - CRITICAL MISCONCEPTION IN COMMENTS: Comments say "0-3.3V = 0-720° servo"
+   but this is WRONG!
+    - Analog encoder measures wheel angle directly, not servo angle
+    - 0-3.3V = 0-360° wheel rotation (encoder after gear reduction)
+    - SERVO_TO_STEERING_RATIO is NOT USED in the code!
+  - Actual conversion in SwerveModule.java (line 179):
+  double rawAngle = (rawVoltage / SteeringConstants.ANALOG_VOLTAGE_MAX) * 2
+  * Math.PI;
+    - Voltage → angle formula: angle = (V / 3.3) × 2π radians
+    - NO gear ratio applied (encoder already reads wheel angle)
+  - Dead zone: ~5° gap where encoder voltage jumps from 3.3V → 0V (avoid
+  commanding angles in this range)
+
+  CONNECTIONS:
+  - ANALOG_VOLTAGE_MAX used in SwerveModule.getSteeringAngle() (line 179)
+  - SERVO_TO_STEERING_RATIO unused (dead code - should be removed in
+  retrospective!)
+
+  ★ Insight ─────────────────────────────────────
+  Why the encoder reads wheel angle directly:
+  The Axon Mini's analog encoder is integrated into the servo's output shaft
+   (after its internal gearbox). In a coaxial swerve module, the servo
+  output gear meshes with the steering gear. The analog signal represents
+  the servo output shaft position, which (through the 2:1 external gearing)
+  directly corresponds to the wheel angle. The encoder "sees" the same
+  rotation as the wheel - no software correction needed!
+  ─────────────────────────────────────────────────
+
+  ---
+  Part B: Calibration Offsets
+
+  // Lines 24-30
+      // ========== MODULE ANGLE OFFSETS ==========
+      // IMPORTANT: These offsets are INVALID after fixing gear ratio bug!
+      // Run SwerveCalibration OpMode to get new values
+      public static double FL_ANGLE_OFFSET = -2.24;  // TODO: Recalibrate
+      public static double FR_ANGLE_OFFSET = 2.83;  // TODO: Recalibrate
+      public static double BL_ANGLE_OFFSET = 2.4;  // TODO: Recalibrate
+      public static double BR_ANGLE_OFFSET = 2.01;  // TODO: Recalibrate
+
+  PURPOSE:
+  Compensate for encoder mounting position - each module's "forward" may not
+   align with 0V.
+
+  IMPLEMENTATION:
+  - Offset per module: Unique calibration value in radians
+  - Application: calibratedAngle = rawAngle - offset
+  - Warning: Comments indicate values are outdated (need recalibration)
+
+  WHY THIS DESIGN:
+  - Physical reality: Can't guarantee encoder's 0° position = wheel forward
+  when assembling modules
+  - Absolute encoders: Retain position even after power cycle (no homing
+  needed)
+  - One-time calibration: Manually align wheels forward, record encoder
+  readings, store as offsets
+
+  KEY DETAILS:
+  - Calibration procedure:
+    a. Run SwerveCalibration.java OpMode
+    b. Manually rotate wheels to forward (0°) position
+    c. OpMode reads raw encoder angles
+    d. Copy values to these constants
+    e. Redeploy code
+  - Applied in SwerveModule.getSteeringAngle() (line 186):
+  double angle = filteredAngle - angleOffset;
+  return normalizeAngle(angle);
+  - Effect:
+    - Without offset: Wheel at forward might read 2.4 radians (137°)
+    - With offset: 2.4 - 2.4 = 0.0 radians (0°) ✓
+  - Radians vs degrees: FTCLib uses radians internally (2π rad = 360°)
+    - -2.24 rad ≈ -128°
+    - 2.83 rad ≈ 162°
+  - Dashboard tuning: @Config allows live adjustment during testing
+
+  CONNECTIONS:
+  - Set manually via SwerveCalibration.java OpMode
+  - Used in SwerveModule.getSteeringAngle() (line 186)
+  - Critical for accuracy: Wrong offsets → modules point wrong direction →
+  robot moves wrong way
+
+  ---
+  Part C: Steering PID Control Constants
+
+  // Lines 32-43
+      // ========== STEERING CONTROL CONSTANTS ==========
+      // PID gains for steering (based on proven KookyBotz implementation)
+      // NOTE: External PID DOES work with Axon servos! Previous diagnosis 
+  was wrong.
+      // Issue was gain too low (0.05), not PID conflict.
+      public static double STEER_P = 0.6;   // Proportional gain (was 0.05 -
+   12× too low!)
+      public static double STEER_I = 0.0;   // Integral gain (not needed for
+   position control)
+      public static double STEER_D = 0.1;   // Derivative gain (dampens 
+  oscillations)
+
+      // Static friction compensation (helps overcome servo stiction)
+      // Added when error > threshold to help servo start moving
+      public static double K_STATIC = 0.03;
+      public static double ERROR_THRESHOLD_FOR_STATIC = 0.02;  // radians 
+  (~1.15 degrees)
+
+  PURPOSE:
+  Configure PID controller for steering servo angle control.
+
+  IMPLEMENTATION:
+  - PID gains:
+    - P (Proportional): 0.6 - main control term (higher = faster response)
+    - I (Integral): 0.0 - accumulates error over time (disabled)
+    - D (Derivative): 0.1 - resists rapid changes (dampens oscillation)
+  - Static friction compensation:
+    - K_STATIC: 0.03 - extra power boost to overcome stiction
+    - ERROR_THRESHOLD: 0.02 rad (1.15°) - only add boost if error exceeds
+  threshold
+
+  WHY THIS DESIGN:
+  - PID necessity: Servos need closed-loop control to accurately reach
+  target angles
+  - No integral term: Position control doesn't accumulate steady-state error
+   (I=0 typical)
+  - Derivative damping: Prevents overshoot and oscillation (critical for
+  smooth motion)
+  - Static friction reality: Servos resist initial movement (stiction) -
+  extra power helps overcome this
+  - Based on proven implementation: Comments reference KookyBotz team
+  (successful FTC swerve)
+
+  KEY DETAILS:
+  - Historical context (per comments):
+    - Initial implementation used P=0.05 (too low → sluggish response)
+    - Increased to P=0.6 (12× increase → much better)
+    - Previous theory: "external PID fights Axon internal PID" was wrong
+    - Real issue: Gain too low, not PID conflict
+  - PID control equation:
+  output = P×error + I×∫error + D×(error rate)
+  output = 0.6×error + 0.0×∫error + 0.1×(dError/dt)
+  - Static friction application (in SwerveModule.java lines 125-127):
+  if (Math.abs(angleError) > SteeringConstants.ERROR_THRESHOLD_FOR_STATIC) {
+      steerPower += SteeringConstants.K_STATIC * Math.signum(steerPower);
+  }
+    - If error > 1.15°: Add +0.03 or -0.03 to power (depending on direction)
+    - Helps servo "break free" from static friction
+    - Once moving, friction drops (kinetic < static)
+  - Tuning process:
+    a. Start with P=0.5, I=0, D=0
+    b. Increase P until oscillation starts
+    c. Add D to dampen oscillation
+    d. Test and iterate via FTC Dashboard
+
+  CONNECTIONS:
+  - Used in SwerveModule.setDesiredState() (lines 105-110):
+  rotationController.setPIDF(
+      SteeringConstants.STEER_P,
+      SteeringConstants.STEER_I,
+      SteeringConstants.STEER_D,
+      0  // F term not used
+  );
+  - Static friction added in lines 125-127
+
+  ★ Insight ─────────────────────────────────────
+  Why derivative term matters for servos:
+  Servos can respond very quickly to power changes. Without derivative
+  dampening (D term), the PID controller can overshoot: servo rotates past
+  target, PID reverses power, servo rotates back past target, repeat →
+  oscillation. The D term "predicts" when the servo is approaching the
+  target (error rate decreasing) and reduces power proactively, achieving
+  smooth deceleration to the setpoint.
+  ─────────────────────────────────────────────────
+
+  ---
+  Part D: Power Limits
+
+  // Lines 45-50
+      // Maximum servo power limit
+      public static double MAX_SERVO_POWER = 1.0;
+
+      // Minimum power to keep servo electronics active (CRITICAL for 
+  encoder reading!)
+      // Axon encoders require servo PWM active to output voltage
+      public static double MIN_SERVO_POWER = 0.01;
+
+  PURPOSE:
+  Constrain servo power output for safety and encoder functionality.
+
+  IMPLEMENTATION:
+  - Max power: 1.0 (full power, both directions)
+  - Min power: 0.01 (tiny power to keep electronics active)
+
+  WHY THIS DESIGN:
+  - MAX_SERVO_POWER: Safety limit (could reduce to 0.8 if servos too
+  aggressive)
+  - MIN_SERVO_POWER: CRITICAL FIX for encoder reading bug!
+    - Axon encoders require PWM signals active to output voltage
+    - setPower(0.0) stops PWM → encoder reads 0.0V (invalid!)
+    - setPower(0.01) maintains PWM → encoder reads correct voltage
+
+  KEY DETAILS:
+  - The encoder power bug: Major issue discovered during calibration
+    - Symptom: All encoder readings showed 0.0V during calibration
+    - Root cause: Calibration code sent stop() → setPower(0.0) → no PWM → no
+   encoder signal
+    - Fix: Never let power go to exactly 0.0, always maintain ≥ 0.01
+  - Implementation in SwerveModule.java (lines 131-133):
+  if (Math.abs(steerPower) < SteeringConstants.MIN_SERVO_POWER) {
+      steerPower = SteeringConstants.MIN_SERVO_POWER *
+  Math.signum(angleError);
+  }
+    - If PID output < 0.01: Clamp to 0.01 (maintaining direction sign)
+    - Keeps servo electronics powered at all times
+    - 1% power insufficient to overcome static friction → servo doesn't move
+   but encoder works
+  - Power clamping (lines 113-117):
+  double steerPower = Range.clip(
+      rotationController.calculate(0, angleError),
+      -SteeringConstants.MAX_SERVO_POWER,
+      SteeringConstants.MAX_SERVO_POWER
+  );
+
+  CONNECTIONS:
+  - MAX_SERVO_POWER used in power clamping (line 115-116)
+  - MIN_SERVO_POWER enforced in lines 131-133
+  - Directly addresses CRITICAL BUG documented in CLAUDE.md
+
+  ---
+  Part E: Encoder Filtering
+
+  // Lines 52-56
+      // ========== ENCODER FILTERING ==========
+      // Minimal filtering (0.95 = 95% new reading, 5% old)
+      // Reduces lag while still smoothing encoder noise
+      public static double ENCODER_FILTER_ALPHA = 0.95;
+  }
+
+  PURPOSE:
+  Smooth noisy encoder readings without introducing lag.
+
+  IMPLEMENTATION:
+  - EMA (Exponential Moving Average): filtered = α×new + (1-α)×old
+  - Alpha = 0.95: Heavily weights new readings (fast response)
+
+  WHY THIS DESIGN:
+  - Encoder noise: Analog voltage fluctuates ±0.01V due to electrical noise
+  - Filtering necessity: Raw readings cause jitter in control loop
+  - Minimal lag: 95% new reading means fast response (only 5% historical)
+  - Simple implementation: Single-line calculation, no arrays/buffers needed
+
+  KEY DETAILS:
+  - EMA formula in SwerveModule.java (lines 182-183):
+  filteredAngle = SteeringConstants.ENCODER_FILTER_ALPHA * rawAngle
+                + (1 - SteeringConstants.ENCODER_FILTER_ALPHA) *
+  filteredAngle;
+  - Effect on noise:
+    - Raw: 2.50 rad, 2.48 rad, 2.51 rad, 2.49 rad (jittery)
+    - Filtered: 2.500 rad, 2.498 rad, 2.499 rad, 2.495 rad (smooth)
+  - Alpha tuning:
+    - 0.99: Almost no filtering (very responsive, still jittery)
+    - 0.95: Sweet spot (smooth + responsive)
+    - 0.80: Heavy filtering (very smooth but laggy)
+    - 0.50: Excessive lag (servo can't keep up)
+  - Initialization (SwerveModule.java line 81):
+  this.filteredAngle = getSteeringAngle();  // Initialize with first reading
+    - Prevents startup transient (filter starting from 0 would cause initial
+   lag)
+
+  CONNECTIONS:
+  - Used in SwerveModule.getSteeringAngle() (lines 182-183)
+  - Filtering happens before calibration offset applied (line 186)
+  - Affects PID control loop responsiveness
+
+  ---
+  Constants Layer Summary
+
+  Configuration Hierarchy:
+  ControlConstants
+    └─ JOYSTICK_DEADBAND (0.05)
+
+  DriveConstants
+    ├─ Robot Dimensions (0.385m × 0.385m square)
+    ├─ Module Positions (FL, FR, BL, BR)
+    ├─ Motor Config (13.7:1 gearing, 3" wheels, 384.5 ticks/rev)
+    ├─ Speed Limits (3.0 m/s linear, π rad/s angular)
+    └─ Validation (static initializer checks)
+
+  SteeringConstants
+    ├─ Encoder Config (0-3.3V = 0-360°)
+    ├─ Calibration Offsets (per-module, needs recalibration)
+    ├─ PID Gains (P=0.6, I=0, D=0.1)
+    ├─ Static Friction (K_STATIC=0.03)
+    ├─ Power Limits (MAX=1.0, MIN=0.01)
+    └─ Encoder Filter (α=0.95)
+
+  Key Takeaways:
+  1. @Config annotation: All constants tunable via FTC Dashboard (no
+  redeployment)
+  2. SI units: meters, radians (WPILib convention, not inches/degrees)
+  3. Physical accuracy critical: Wrong dimensions → wrong kinematics → robot
+   doesn't go straight
+  4. Encoder power bug: Must maintain MIN_SERVO_POWER=0.01 for valid encoder
+   readings
+  5. Dead code: SERVO_TO_STEERING_RATIO unused (encoder reads wheel angle
+  directly)
+
+  Ready for Phase 1.3 (SwerveModule.java - Individual Module Control)? This
+  is where the PID control loop, state optimization, and encoder reading all
+   come together!
+
+> continue (dont forget to store all of these so you can do the last steps) 
+
+● ⚙️ PHASE 1.3: INDIVIDUAL MODULE CONTROL (SwerveModule.java)
+
+  This is the heart of the swerve drive system - where hardware meets
+  control algorithms. Each module independently controls one wheel's
+  steering angle and drive speed.
+
+  ---
+  Part 1: Class Structure & Fields
+
+  Part A: Class Documentation & Imports
+
+  // Lines 1-26
+  package org.firstinspires.ftc.teamcode.Subsystems;
+
+  import com.arcrobotics.ftclib.controller.PIDFController;
+  import com.arcrobotics.ftclib.geometry.Rotation2d;
+  import
+  com.arcrobotics.ftclib.kinematics.wpilibkinematics.SwerveModuleState;
+  import com.qualcomm.robotcore.hardware.AnalogInput;
+  import com.qualcomm.robotcore.hardware.CRServo;
+  import com.qualcomm.robotcore.hardware.DcMotor;
+  import com.qualcomm.robotcore.hardware.DcMotorEx;
+  import com.qualcomm.robotcore.hardware.DcMotorSimple;
+  import com.qualcomm.robotcore.util.Range;
+
+  import org.firstinspires.ftc.teamcode.Constants.DriveConstants;
+  import org.firstinspires.ftc.teamcode.Constants.SteeringConstants;
+
+  /**
+   * Swerve module implementation with PID steering control
+   * Based on proven KookyBotz approach - external PID DOES work with Axon 
+  servos!
+   *
+   * Key features:
+   * - PID controller (P=0.6, D=0.1) for smooth, responsive steering
+   * - Static friction compensation to overcome servo stiction
+   * - Servos kept powered to maintain analog encoder readings
+   * - State optimization to avoid >90° rotations
+   */
+  public class SwerveModule {
+
+  PURPOSE:
+  Define a single swerve module that coordinates steering (servo) and drive
+  (motor) to achieve desired velocity vector.
+
+  IMPLEMENTATION:
+  - FTCLib imports: PIDFController, Rotation2d, SwerveModuleState (WPILib
+  kinematics)
+  - FTC SDK imports: Motor, servo, encoder hardware classes
+  - Architecture: Encapsulates one module's hardware + control logic
+
+  WHY THIS DESIGN:
+  - Modularity: Each of 4 modules is identical - same code instantiated 4
+  times
+  - Separation of concerns: Module doesn't know about other modules or
+  robot-level kinematics
+  - Reusability: Same class works for FL, FR, BL, BR (just different
+  hardware objects + offsets)
+
+  KEY DETAILS:
+  - SwerveModuleState: FTCLib data structure containing:
+    - speedMetersPerSecond: Linear velocity (double)
+    - angle: Wheel direction (Rotation2d object)
+  - PIDFController: FTCLib PID implementation (P, I, D, F terms)
+  - Range.clip(): Utility to clamp values to min/max bounds
+
+  ---
+  Part B: Hardware & Configuration Fields
+
+  // Lines 28-45
+      // Hardware
+      private final DcMotorEx driveMotor;
+      private final CRServo steerServo;
+      private final AnalogInput steerEncoder;
+
+      // Configuration
+      private final double angleOffset;
+      private final boolean steerInverted;
+      private final String moduleName;
+
+      // PID controller for steering
+      private final PIDFController rotationController;
+
+      // Minimal filtering for encoder noise
+      private double filteredAngle = 0;
+
+      // State tracking
+      private SwerveModuleState desiredState = new SwerveModuleState();
+
+  PURPOSE:
+  Store hardware references, configuration, and runtime state for one
+  module.
+
+  IMPLEMENTATION:
+  - Hardware (final): References to physical devices (set in constructor,
+  never changed)
+  - Configuration (final): Calibration offset, inversion flags, name
+  - Control (final): PIDFController instance (one per module)
+  - State (mutable): filteredAngle, desiredState (updated every loop)
+
+  WHY THIS DESIGN:
+  - Final hardware: Prevents accidental reassignment (hardware doesn't
+  change during match)
+  - Immutable config: Calibration offsets constant throughout OpMode
+  - Mutable state: Filter and desired state must update every control loop
+  iteration
+
+  KEY DETAILS:
+  - angleOffset: Per-module calibration value (from SteeringConstants)
+  - steerInverted: Some modules may need reversed servo direction
+  (hardware-dependent)
+  - filteredAngle: EMA-filtered encoder reading (smooths noise)
+  - desiredState: Last commanded state (stored for telemetry/debugging)
+  - rotationController: Separate PID instance per module (independent
+  control)
+
+  CONNECTIONS:
+  - Hardware passed from SwerveHardware via SwerveDrive
+  - angleOffset from SteeringConstants (FL_ANGLE_OFFSET, FR_ANGLE_OFFSET,
+  etc.)
+  - desiredState set by setDesiredState() method
+
+  ---
+  Part 2: Constructor - Module Initialization
+
+  // Lines 47-82
+      public SwerveModule(
+          DcMotorEx driveMotor,
+          CRServo steerServo,
+          AnalogInput steerEncoder,
+          double angleOffset,
+          boolean driveInverted,
+          boolean steerInverted,
+          String moduleName
+      ) {
+          this.driveMotor = driveMotor;
+          this.steerServo = steerServo;
+          this.steerEncoder = steerEncoder;
+          this.angleOffset = angleOffset;
+          this.steerInverted = steerInverted;
+          this.moduleName = moduleName;
+
+          // Configure drive motor
+          this.driveMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+          this.driveMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+  this.driveMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+          if (driveInverted) {
+              this.driveMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+          }
+
+          // Initialize PID controller for steering
+          this.rotationController = new PIDFController(
+              SteeringConstants.STEER_P,
+              SteeringConstants.STEER_I,
+              SteeringConstants.STEER_D,
+              0  // F term not used
+          );
+
+          // Initialize filtered angle
+          this.filteredAngle = getSteeringAngle();
+      }
+
+  PURPOSE:
+  Initialize one swerve module with hardware and control configuration.
+
+  IMPLEMENTATION:
+
+  Lines 56-61 - Store references:
+  - Assign constructor parameters to fields
+
+  Lines 64-70 - Configure drive motor:
+  - STOP_AND_RESET_ENCODER: Zero the encoder count
+  - RUN_WITHOUT_ENCODER: Open-loop power control (no built-in PID)
+  - BRAKE: Motor resists motion when power=0 (vs FLOAT which coasts)
+  - Optionally reverse motor direction if driveInverted=true
+
+  Lines 73-78 - Initialize PID controller:
+  - Create PIDFController with gains from SteeringConstants
+  - F term = 0 (feedforward not used for position control)
+
+  Lines 81 - Initialize encoder filter:
+  - Read current angle to seed filter (prevents startup transient)
+
+  WHY THIS DESIGN:
+  - Dependency injection: Hardware passed as parameters (testable, flexible)
+  - Encoder reset: Zeroing encoder ensures consistent starting point
+  - RUN_WITHOUT_ENCODER mode: Open-loop control (PID would use
+  RUN_USING_ENCODER)
+  - BRAKE behavior: Prevents robot drifting when stopped
+  - Per-module PID: Each module has independent controller (no crosstalk)
+  - Filter seeding: Starting with actual reading avoids "jump" from 0 to
+  real value
+
+  KEY DETAILS:
+  - Why reset encoder?
+    - Encoder counts accumulate from power-on
+    - Reset ensures count starts at 0 for this OpMode
+    - Only drive encoder reset (steering uses absolute encoder, no reset
+  needed)
+  - Why RUN_WITHOUT_ENCODER?
+    - Using simple feedforward control (not velocity PID)
+    - setPower() directly controls motor (not setVelocity())
+    - Faster response, simpler tuning
+  - BRAKE vs FLOAT:
+    - BRAKE: Motor actively resists turning (short circuits windings)
+    - FLOAT: Motor freewheels (no electrical braking)
+    - BRAKE preferred for swerve (prevents unintended rotation)
+  - Direction inversion:
+    - Some modules may have motors mounted backward
+    - REVERSE flips +power → backward motion to +power → forward motion
+    - Set per-module in SwerveDrive constructor
+  - PIDFController initialization:
+    - Creates controller with initial gains
+    - Can be updated later via setPIDF() for real-time tuning
+    - F term (feedforward) used for velocity control, not needed for
+  position
+
+  CONNECTIONS:
+  - Called 4 times by SwerveDrive constructor (lines 41-79 in
+  SwerveDrive.java)
+  - Each module gets different: hardware objects, angleOffset, moduleName
+  - All modules share same: PID gains (from SteeringConstants)
+
+  ★ Insight ─────────────────────────────────────
+  Why each module needs its own PID controller:
+  If all 4 modules shared one PID controller, the controller would receive
+  conflicting error signals (FL wants to turn left, FR wants to turn right).
+   The PID would "average" these errors and output nonsense! Each module
+  needs independent control - they're solving different problems
+  simultaneously (FL reaching 45°, FR reaching -45°, etc.).
+  ─────────────────────────────────────────────────
+
+  ---
+  Part 3: Main Control Method - setDesiredState()
+
+  This is where everything comes together - the control loop that makes
+  swerve work!
+
+  Part A: Method Signature & State Optimization
+
+  // Lines 84-95
+      /**
+       * Set the desired state for this module
+       * Uses PID controller with static friction compensation (KookyBotz 
+  approach)
+       */
+      public void setDesiredState(SwerveModuleState desiredState) {
+          // Optimize state to avoid rotating more than 90 degrees
+          SwerveModuleState optimizedState = SwerveModuleState.optimize(
+              desiredState,
+              new Rotation2d(getSteeringAngle())
+          );
+
+          this.desiredState = optimizedState;
+
+  PURPOSE:
+  Command the module to achieve a target velocity vector (speed +
+  direction).
+
+  IMPLEMENTATION:
+  - Input: SwerveModuleState (speed in m/s, angle as Rotation2d)
+  - Step 1: Optimize state to avoid large rotations
+  - Step 2: Store optimized state for telemetry
+
+  WHY THIS DESIGN:
+  - State optimization critical: Prevents modules from rotating >90°
+  unnecessarily
+  - Example: If current angle = 0°, target = 180°:
+    - Without optimization: Rotate 180° clockwise
+    - With optimization: Rotate 0° but reverse drive motor (equivalent!)
+  - Efficiency: Faster response, less servo wear
+
+  KEY DETAILS:
+  - SwerveModuleState.optimize(): FTCLib method that:
+    a. Calculates shortest rotation to target angle
+    b. If shortest path > 90°, flips to opposite angle and negates speed
+    c. Example:
+        - Current=0°, Target=180°, Speed=1.0
+      - Optimized: Target=0°, Speed=-1.0 (same result, no rotation!)
+  - Why store optimizedState?
+    - Telemetry can display what was actually commanded (not original
+  request)
+    - Debugging: Compare desired vs actual states
+  - Rotation2d object:
+    - Represents angle in radians (internally stores cos/sin for efficiency)
+    - getSteeringAngle() returns double (radians), wrapped in Rotation2d
+
+  CONNECTIONS:
+  - Called by SwerveDrive.setModuleStates() every control loop iteration
+  - getSteeringAngle() (line 174) provides current angle for optimization
+  - Optimized state used for both steering and drive control (next sections)
+
+  ★ Insight ─────────────────────────────────────
+  Why optimization matters for responsiveness:
+  Imagine commanding the robot to drive backward (180° from current
+  direction). Without optimization, all 4 modules would rotate 180° (takes
+  ~0.5 seconds), then start driving. With optimization, modules don't rotate
+   at all - just reverse motors - instant response! This is why swerve
+  drives can change direction so quickly.
+  ─────────────────────────────────────────────────
+
+  ---
+  Part B: Steering Control - PID Calculation
+
+  // Lines 97-117
+          // === STEERING CONTROL (PID WITH STATIC FRICTION) ===
+          double currentAngle = getSteeringAngle();
+          double targetAngle = optimizedState.angle.getRadians();
+
+          // Calculate shortest angle error (wrap at 2π)
+          double angleError = normalizeAngle(targetAngle - currentAngle);
+
+          // Update PID gains (allows FTC Dashboard tuning)
+          rotationController.setPIDF(
+              SteeringConstants.STEER_P,
+              SteeringConstants.STEER_I,
+              SteeringConstants.STEER_D,
+              0  // F term not used for steering
+          );
+
+          // PID control (setpoint = 0, measurement = error)
+          double steerPower = Range.clip(
+              rotationController.calculate(0, angleError),
+              -SteeringConstants.MAX_SERVO_POWER,
+              SteeringConstants.MAX_SERVO_POWER
+          );
+
+  PURPOSE:
+  Calculate servo power needed to rotate module to target angle using PID
+  control.
+
+  IMPLEMENTATION:
+
+  Lines 98-99: Read current and target angles
+  - currentAngle: From encoder (filtered, calibrated)
+  - targetAngle: From optimized state (radians)
+
+  Line 102: Calculate angle error
+  - normalizeAngle(): Wraps error to [-π, π] range (shortest path)
+  - Example: current=0.1 rad, target=6.2 rad → error=-0.18 rad (not +6.1
+  rad!)
+
+  Lines 105-110: Update PID gains
+  - Allows real-time tuning via FTC Dashboard
+  - Gains read from SteeringConstants every iteration (mutable static
+  fields)
+
+  Lines 113-117: Calculate PID output
+  - rotationController.calculate(setpoint=0, measurement=angleError)
+    - Wait, why setpoint=0? Because we're controlling error to zero, not
+  angle to target!
+    - PID output = P×error + I×∫error + D×(dError/dt)
+  - Range.clip(): Clamp output to [-1.0, 1.0]
+
+  WHY THIS DESIGN:
+  - Error-based control: Easier to understand (drive error to zero)
+  - Normalization critical: Without it, controller might try to rotate 350°
+  instead of -10°
+  - Real-time tuning: Dashboard updates take effect immediately (no code
+  redeployment)
+  - Power clamping: Prevents controller from commanding >100% power
+  (saturates safely)
+
+  KEY DETAILS:
+  - PID calculation internals (PIDFController.calculate()):
+  error = setpoint - measurement = 0 - angleError = -angleError
+  proportional = P × error = 0.6 × (-angleError)
+  derivative = D × (error - lastError) / dt = 0.1 × (dError/dt)
+  output = proportional + derivative
+  - Why negative angleError?
+    - If target=1.0 rad, current=0.5 rad → angleError=+0.5 rad (need to
+  rotate positive direction)
+    - PID sees: error = 0 - 0.5 = -0.5
+    - Output = 0.6 × (-(-0.5)) = +0.3 power (positive rotation) ✓
+  - Derivative term effect:
+    - Measures how fast error is changing
+    - If error decreasing rapidly → module approaching target → reduce power
+   (prevent overshoot)
+    - Acts like "predictive braking"
+  - Why update gains every iteration?
+    - FTC Dashboard modifies static constants in real-time
+    - Re-reading ensures PID uses latest values
+    - Minimal overhead (just memory reads)
+
+  CONNECTIONS:
+  - getSteeringAngle() reads encoder (line 174)
+  - normalizeAngle() wraps angle (line 211)
+  - PID gains from SteeringConstants
+  - Output used in next section (static friction compensation)
+
+  ---
+  Part C: Static Friction Compensation & Safety
+
+  // Lines 119-133
+          // Safety: handle NaN (can occur during rapid changes)
+          if (Double.isNaN(steerPower)) {
+              steerPower = 0;
+          }
+
+          // Add static friction compensation when error is significant
+          if (Math.abs(angleError) >
+  SteeringConstants.ERROR_THRESHOLD_FOR_STATIC) {
+              steerPower += SteeringConstants.K_STATIC *
+  Math.signum(steerPower);
+          }
+
+          // CRITICAL: Keep servo powered even when at target to maintain 
+  encoder readings!
+          // Axon encoders require PWM signals active to output voltage
+          if (Math.abs(steerPower) < SteeringConstants.MIN_SERVO_POWER) {
+              steerPower = SteeringConstants.MIN_SERVO_POWER *
+  Math.signum(angleError);
+          }
+
+  PURPOSE:
+  Apply fixes to PID output for real-world servo behavior.
+
+  IMPLEMENTATION:
+
+  Lines 120-122 - NaN safety:
+  - Check if PID output is NaN (Not a Number)
+  - Can occur during initialization or extreme input changes
+  - Failsafe: Set power to 0 if NaN detected
+
+  Lines 125-127 - Static friction boost:
+  - If error > 0.02 rad (1.15°): Add +0.03 or -0.03 to power
+  - Math.signum(steerPower): Returns +1 if positive, -1 if negative, 0 if
+  zero
+  - Helps servo overcome stiction (initial resistance to movement)
+
+  Lines 131-133 - Encoder power fix:
+  - If power < 0.01: Clamp to 0.01 (maintaining direction)
+  - Uses Math.signum(angleError) for direction (not steerPower!)
+  - CRITICAL FIX: Keeps servo electronics active for encoder reading
+
+  WHY THIS DESIGN:
+  - NaN handling: Defensive programming (prevents servo spazzing)
+  - Static friction reality: Servos resist initial movement more than
+  continued movement
+  - Encoder dependency: Axon servos need PWM active to output analog voltage
+
+  KEY DETAILS:
+  - Static friction mechanics:
+    - Static friction > kinetic friction (harder to start moving than keep
+  moving)
+    - Small PID outputs (< 0.1) may be insufficient to break static friction
+    - Adding K_STATIC boost helps servo "break free"
+    - Once moving, PID alone sufficient (friction drops)
+  - Why only add when error > threshold?
+    - Near target (error < 1.15°): Don't want extra boost causing overshoot
+    - Far from target: Need boost to start motion
+    - Threshold prevents "hunting" (oscillation around setpoint)
+  - Encoder power bug in detail:
+    - Axon Mini servo = motor + encoder + controller in one unit
+    - Encoder chip powered by servo's electronics
+    - setPower(0.0) → servo electronics sleep → encoder outputs 0V
+    - setPower(0.01) → electronics active → encoder outputs correct voltage
+    - 1% power too low to overcome static friction → servo doesn't move but
+  encoder works ✓
+  - Why signum(angleError) instead of signum(steerPower)?
+    - After adding friction boost, steerPower might be very small but
+  non-zero
+    - Using angleError ensures we apply power in correct direction to reduce
+   error
+    - Edge case: PID output near zero but error significant → use error
+  direction
+
+  CONNECTIONS:
+  - K_STATIC, ERROR_THRESHOLD_FOR_STATIC from SteeringConstants (lines
+  42-43)
+  - MIN_SERVO_POWER from SteeringConstants (line 50)
+  - Addresses CRITICAL BUG #2 in CLAUDE.md
+
+  ★ Insight ─────────────────────────────────────
+  Why the MIN_SERVO_POWER fix is so important:
+  During calibration, the code would stop servos with setPower(0.0) to let
+  encoders "settle". But this caused encoder voltages to drop to 0.0V - the
+  servos weren't reading 0° position, they literally couldn't read anything!
+   This bug invalidated all calibration offsets. By maintaining 0.01 power,
+  we keep the servo's internal electronics powered (and thus the encoder
+  chip powered) while applying insufficient force to actually rotate the
+  module. Genius workaround for a hardware quirk!
+  ─────────────────────────────────────────────────
+
+  ---
+  Part D: Apply Steering Power
+
+  // Lines 136
+          // Apply power (with inversion if needed)
+          steerServo.setPower(steerInverted ? -steerPower : steerPower);
+
+  PURPOSE:
+  Send calculated power to steering servo.
+
+  IMPLEMENTATION:
+  - Check steerInverted flag (set in constructor)
+  - If inverted: Negate power before applying
+  - Call servo's setPower() method
+
+  WHY THIS DESIGN:
+  - Hardware variation: Some modules may have servos mounted backward
+  - Software correction: Easier to flip sign in code than rewire hardware
+  - Per-module configuration: Only affects modules that need it
+
+  KEY DETAILS:
+  - CRServo.setPower(double power): FTC SDK method
+    - Accepts range [-1.0, 1.0]
+    - Positive = one direction, negative = opposite direction
+    - 0.0 = stop (but we never use exactly 0.0 due to encoder fix!)
+  - When to invert:
+    - Determined during hardware testing
+    - If servo rotates opposite to expected direction → set
+  steerInverted=true in SwerveDrive constructor
+    - Currently all modules have steerInverted=false (lines 47, 57, 67, 77
+  in SwerveDrive.java)
+
+  ---
+  Part E: Drive Motor Control
+
+  // Lines 138-149
+          // === DRIVE CONTROL (SIMPLE FEEDFORWARD) ===
+          // Cosine compensation reduces skew during direction changes
+          // TEMPORARILY DISABLED for testing - re-enable after motors work
+          // double cosineScalar = Math.abs(Math.cos(angleError));
+          // double targetSpeed = optimizedState.speedMetersPerSecond * 
+  cosineScalar;
+          double targetSpeed = optimizedState.speedMetersPerSecond;
+
+          // Kinematics already normalizes speeds to max - just clamp to 
+  [-1, 1]
+          // NO additional division needed!
+          double drivePower = Math.max(-1.0, Math.min(1.0, targetSpeed));
+
+          driveMotor.setPower(drivePower);
+      }
+
+  PURPOSE:
+  Control drive motor to achieve target speed.
+
+  IMPLEMENTATION:
+  - Lines 143: Get target speed from optimized state (m/s)
+  - Line 147: Clamp to motor power range [-1.0, 1.0]
+  - Line 149: Apply power to drive motor
+
+  WHY THIS DESIGN:
+  - Simple feedforward: power = speed (no PID, no complex math)
+  - Trust kinematics: SwerveDrive already normalized speeds to achievable
+  range
+  - Fast response: No control loop lag
+
+  KEY DETAILS:
+  - Commented out cosine compensation (lines 140-142):
+    - Purpose: Reduce forward/strafe skew when module not pointed in drive
+  direction
+    - Formula: targetSpeed × cos(angleError)
+    - Effect: If module 45° off target direction, scale speed by cos(45°) ≈
+  0.707
+    - Why disabled? Comment says "TEMPORARILY DISABLED for testing"
+    - When to enable? After basic functionality verified (adds complexity)
+  - Why no division by MAX_SPEED?
+    - Earlier versions might have used: power = speed / MAX_SPEED
+    - But SwerveDriveKinematics.normalizeWheelSpeeds() already did this!
+    - Code assumes speeds coming in are already [-1.0, 1.0] range
+    - Clamp is safety check (should never actually trigger if kinematics
+  working)
+  - Feedforward vs PID:
+    - Feedforward: Command power proportional to desired speed (open-loop)
+    - PID: Measure actual speed, adjust power to match target (closed-loop)
+    - Current implementation: feedforward only
+    - Sufficient for teleop, may need PID for autonomous path following
+  - State optimization effect:
+    - If optimization flipped angle and negated speed:
+        - speedMetersPerSecond is negative → drivePower negative → motor
+  reverses ✓
+    - Module doesn't rotate, motor direction changes → instant response!
+
+  CONNECTIONS:
+  - optimizedState from line 90 (after state optimization)
+  - Power applied to driveMotor (hardware reference from constructor)
+  - No encoder feedback used (open-loop control)
+
+  ---
+  Part 4: State Query & Telemetry Methods
+
+  Part A: getState() - Current Module State
+
+  // Lines 152-160
+      /**
+       * Get the current state of the module
+       */
+      public SwerveModuleState getState() {
+          return new SwerveModuleState(
+              getDriveVelocity(),
+              new Rotation2d(getSteeringAngle())
+          );
+      }
+
+  PURPOSE:
+  Report module's current state (actual speed + angle).
+
+  IMPLEMENTATION:
+  - Create new SwerveModuleState with:
+    - Speed: From getDriveVelocity() (encoder-based)
+    - Angle: From getSteeringAngle() (analog encoder)
+
+  WHY THIS DESIGN:
+  - Telemetry: Display what module is actually doing (vs what was commanded)
+  - Odometry: Track robot position by integrating wheel velocities
+  - Debugging: Compare actual state to desired state (detect control issues)
+
+  KEY DETAILS:
+  - Called by SwerveDrive.getModuleStates() for telemetry
+  - Returns actual state (sensor readings), not commanded state
+  - Used in SwerveTeleop.updateTelemetry() to display module info
+
+  ---
+  Part B: getDriveVelocity() - Encoder Velocity Reading
+
+  // Lines 199-206
+      /**
+       * Get the drive velocity in meters per second
+       */
+      private double getDriveVelocity() {
+          // Get velocity in ticks per second
+          double velocityTicksPerSec = driveMotor.getVelocity();
+
+          // Convert to meters per second
+          return velocityTicksPerSec / DriveConstants.TICKS_PER_METER;
+      }
+
+  PURPOSE:
+  Convert motor encoder velocity to real-world speed (m/s).
+
+  IMPLEMENTATION:
+  - Read encoder velocity: driveMotor.getVelocity() (ticks/sec)
+  - Convert to m/s: Divide by TICKS_PER_METER
+
+  WHY THIS DESIGN:
+  - DcMotorEx advantage: getVelocity() returns computed velocity (not just
+  raw ticks)
+  - Automatic calculation: SDK internally computes ticks/sec from encoder
+  increments
+  - Units standardization: Returns m/s (matches kinematics convention)
+
+  KEY DETAILS:
+  - DcMotorEx.getVelocity() internals:
+    - SDK samples encoder position over time
+    - Computes: (currentTicks - lastTicks) / deltaTime
+    - Returns ticks per second (double)
+    - Updated automatically in background
+  - Conversion formula:
+  TICKS_PER_METER = (MOTOR_TICKS_PER_REV × DRIVE_GEAR_RATIO) / (π × 
+  WHEEL_DIAMETER)
+  velocity_m/s = velocity_ticks/s / TICKS_PER_METER
+  - Example calculation:
+    - Motor spinning at 100 ticks/sec
+    - TICKS_PER_METER = 22,008
+    - Velocity = 100 / 22,008 ≈ 0.0045 m/s (4.5 mm/s)
+
+  ---
+  Part C: getSteeringAngle() - Encoder Reading with Filtering
+
+  // Lines 170-188
+      /**
+       * Get the current steering angle in radians
+       * Minimal filtering to reduce lag
+       */
+      private double getSteeringAngle() {
+          // Read analog voltage (0-3.3V = 0-355° with ~5° dead zone)
+          double rawVoltage = steerEncoder.getVoltage();
+
+          // Convert voltage to angle (0-3.3V = 0-2π radians)
+          double rawAngle = (rawVoltage /
+  SteeringConstants.ANALOG_VOLTAGE_MAX) * 2 * Math.PI;
+
+          // Minimal EMA filtering (95% new, 5% old) - barely any lag
+          filteredAngle = SteeringConstants.ENCODER_FILTER_ALPHA * rawAngle
+                        + (1 - SteeringConstants.ENCODER_FILTER_ALPHA) *
+  filteredAngle;
+
+          // Apply calibration offset and normalize
+          double angle = filteredAngle - angleOffset;
+          return normalizeAngle(angle);
+      }
+
+  PURPOSE:
+  Read analog encoder, filter noise, apply calibration, return steering
+  angle.
+
+  IMPLEMENTATION:
+  1. Line 176: Read raw voltage (0-3.3V)
+  2. Line 179: Convert to radians (linear mapping)
+  3. Lines 182-183: Apply EMA filter (smooth noise)
+  4. Line 186: Subtract calibration offset
+  5. Line 187: Normalize to [-π, π] range
+
+  WHY THIS DESIGN:
+  - Voltage-to-angle linear: Analog encoders output voltage proportional to
+  position
+  - Filtering necessary: Voltage fluctuates due to electrical noise
+  - Calibration critical: Encoder's 0V ≠ wheel forward position
+  - Normalization ensures consistency: All angles in standard range
+
+  KEY DETAILS:
+  - Voltage-to-radians formula:
+  angle = (voltage / 3.3V) × 2π radians
+
+  0.0V → 0.0 rad (0°)
+  1.65V → π rad (180°)
+  3.3V → 2π rad (360° ≈ 0°, wraps)
+  - EMA filter formula:
+  filtered_new = α×raw + (1-α)×filtered_old
+  filtered_new = 0.95×raw + 0.05×filtered_old
+    - Heavily weights new reading (95%)
+    - Slight smoothing from history (5%)
+    - Effect: Reduces ±0.01V noise to ±0.005V
+  - Calibration application:
+    - angle = filteredAngle - angleOffset
+    - Example: Wheel forward reads 2.4 rad, offset=2.4 rad → angle=0 rad ✓
+  - Dead zone handling:
+    - Encoder has ~5° where voltage wraps 3.3V → 0V
+    - Code doesn't explicitly handle this
+    - Potential issue: If module rotates through dead zone, angle jumps 2π
+    - Normalization fixes this (wraps back to correct range)
+
+  CONNECTIONS:
+  - Called by getState() for telemetry
+  - Called by setDesiredState() for PID control (line 98)
+  - Uses filteredAngle field (initialized in constructor line 81)
+
+  ---
+  Part D: normalizeAngle() - Angle Wrapping
+
+  // Lines 208-219
+      /**
+       * Normalize angle to [-π, π] range
+       */
+      private double normalizeAngle(double angle) {
+          while (angle > Math.PI) {
+              angle -= 2 * Math.PI;
+          }
+          while (angle < -Math.PI) {
+              angle += 2 * Math.PI;
+          }
+          return angle;
+      }
+
+  PURPOSE:
+  Wrap angles to standard [-π, π] range (equivalent to [-180°, 180°]).
+
+  IMPLEMENTATION:
+  - While angle > π: Subtract 2π
+  - While angle < -π: Add 2π
+  - Return wrapped angle
+
+  WHY THIS DESIGN:
+  - Angle equivalence: 2π rad = 360° = 0° (circular wrap-around)
+  - Standard range: PID controllers expect errors in [-π, π]
+  - Shortest path: Ensures error calculation finds shortest rotation
+
+  KEY DETAILS:
+  - Examples:
+    - Input: 7.0 rad (401°) → Output: 0.72 rad (41°)
+    - Input: -5.0 rad (-286°) → Output: 1.28 rad (74°)
+    - Input: 3.5 rad (200°) → Output: -2.78 rad (-160°)
+  - Why while loops?
+    - Handles extreme cases (angle >> 2π)
+    - Modulo operator (%) can give wrong results for negative angles
+    - While loops guarantee correct wrapping regardless of input
+  - Performance:
+    - Usually 0-1 iterations (angles rarely exceed ±π)
+    - Worst case: 2-3 iterations (if angle extremely large)
+    - Negligible overhead
+  - Alternative implementation (more efficient but less readable):
+  return Math.atan2(Math.sin(angle), Math.cos(angle));
+    - Leverages trig functions to wrap angle
+    - Single line, no loops
+    - Slightly more computationally expensive (sin/cos/atan2)
+
+  CONNECTIONS:
+  - Used in getSteeringAngle() (line 187) after calibration
+  - Used in setDesiredState() (line 102) for error calculation
+  - Critical for PID control correctness
+
+  ★ Insight ─────────────────────────────────────
+  Why angle normalization prevents the "long way around" problem:
+  Without normalization: current=0.1 rad, target=6.2 rad → error=6.1 rad
+  (349°)! Servo would rotate almost a full circle clockwise. With
+  normalization: 6.2 rad normalizes to -0.08 rad → error=-0.18 rad (-10°) →
+  servo rotates 10° counter-clockwise (shortest path). This is why
+  normalized errors are essential for any rotational control system!
+  ─────────────────────────────────────────────────
+
+  ---
+  Part E: Helper Methods
+
+  // Lines 163-168, 191-195, 221-255
+      /**
+       * Reset the drive encoder to zero
+       */
+      public void resetDriveEncoder() {
+          driveMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+          driveMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+      }
+
+      /**
+       * Get raw encoder voltage for debugging
+       */
+      public double getRawEncoderVoltage() {
+          return steerEncoder.getVoltage();
+      }
+
+      // Telemetry/debugging getters
+      public String getModuleName() { return moduleName; }
+      public SwerveModuleState getDesiredState() { return desiredState; }
+      public double getCurrentSteeringAngle() { return getSteeringAngle(); }
+      public double getDrivePower() { return driveMotor.getPower(); }
+
+      /**
+       * Stop the module (zero power to drive and steer)
+       */
+      public void stop() {
+          driveMotor.setPower(0.0);
+          steerServo.setPower(0.0);
+      }
+
+  PURPOSE:
+  Utility methods for control, debugging, and telemetry.
+
+  KEY METHODS:
+
+  resetDriveEncoder():
+  - Zero encoder count for odometry
+  - Resets to RUN_WITHOUT_ENCODER mode (maintains open-loop control)
+
+  getRawEncoderVoltage():
+  - Debug method to check encoder hardware
+  - Used in EncoderTest.java OpMode
+
+  Telemetry getters:
+  - Expose internal state for driver station display
+  - Used by SwerveTeleop for real-time monitoring
+
+  stop():
+  - Emergency stop (zero power to all motors/servos)
+  - ⚠️ Potential issue: Sets servo power to 0.0 → encoder may read
+  incorrectly!
+  - Called at end of OpMode (encoder reading no longer needed)
+
+  ---
+  SwerveModule Summary
+
+  Control Flow (per module, every loop iteration):
+  1. SwerveDrive calls setDesiredState(SwerveModuleState)
+     ↓
+  2. Optimize state (avoid >90° rotations, flip drive if needed)
+     ↓
+  3. Read current steering angle (encoder → voltage → radians → filtered →
+  calibrated)
+     ↓
+  4. Calculate angle error (target - current, normalized to [-π, π])
+     ↓
+  5. PID controller computes steering power
+     ↓
+  6. Apply static friction boost + MIN_SERVO_POWER fix
+     ↓
+  7. Send power to steering servo
+     ↓
+  8. Send power to drive motor (simple feedforward)
+     ↓
+  9. Module moves toward target state
+
+  Critical Concepts:
+  1. State Optimization: Never rotate >90° (reverse drive instead)
+  2. PID Control: Closed-loop steering angle regulation
+  3. Static Friction: Extra power boost to overcome stiction
+  4. Encoder Power: Must maintain MIN_SERVO_POWER for valid readings
+  5. Angle Normalization: Wrap angles to [-π, π] for shortest path
+  6. EMA Filtering: Smooth noisy encoder readings
+  7. Feedforward Drive: Open-loop motor control (sufficient for teleop)
+
+  Ready for Phase 1.4 (SwerveDrive.java - Coordinator & Kinematics)?
+
+> yes do 1.4 
+
+● 🎯 PHASE 1.4: SWERVE DRIVE COORDINATOR (SwerveDrive.java)
+
+  This is the orchestrator - it takes high-level commands (forward, strafe,
+  rotate) and coordinates all 4 modules to achieve the desired robot motion
+  using inverse kinematics.
+
+  ---
+  Part 1: Class Structure & Initialization
+
+  Part A: Class Documentation & Fields
+
+  // Lines 1-35
+  package org.firstinspires.ftc.teamcode.Subsystems;
+
+  import com.arcrobotics.ftclib.geometry.Rotation2d;
+  import com.arcrobotics.ftclib.kinematics.wpilibkinematics.ChassisSpeeds;
+  import
+  com.arcrobotics.ftclib.kinematics.wpilibkinematics.SwerveDriveKinematics;
+  import
+  com.arcrobotics.ftclib.kinematics.wpilibkinematics.SwerveModuleState;
+  import com.qualcomm.robotcore.hardware.IMU;
+
+  import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+  import org.firstinspires.ftc.teamcode.Constants.DriveConstants;
+  import org.firstinspires.ftc.teamcode.Constants.SteeringConstants;
+  import org.firstinspires.ftc.teamcode.Hardware.SwerveHardware;
+
+  /**
+   * Swerve Drive Subsystem
+   *
+   * Manages 4-module swerve drive using FTCLib WPILib kinematics
+   * Converts chassis velocities (forward, strafe, rotation) to individual 
+  module states
+   *
+   * Architecture:
+   * - Uses simple proportional control for steering (trust Axon servo 
+  internal PID)
+   * - FTCLib handles inverse kinematics (ChassisSpeeds → 
+  SwerveModuleStates)
+   * - Module ordering: Front-Left, Front-Right, Back-Left, Back-Right
+   */
+  public class SwerveDrive {
+
+      private final SwerveModule frontLeft;
+      private final SwerveModule frontRight;
+      private final SwerveModule backLeft;
+      private final SwerveModule backRight;
+      private final SwerveDriveKinematics kinematics;
+
+      // Field-centric drive (requires IMU)
+      private final IMU imu;
+
+  PURPOSE:
+  Coordinate 4 swerve modules to achieve robot-level motion commands.
+
+  IMPLEMENTATION:
+  - 4 SwerveModule objects: One per wheel (FL, FR, BL, BR)
+  - SwerveDriveKinematics: FTCLib inverse kinematics solver
+  - IMU reference: For field-centric drive (measures robot heading)
+
+  WHY THIS DESIGN:
+  - Separation of concerns:
+    - SwerveDrive handles coordination (what all modules should do together)
+    - SwerveModule handles execution (how one module achieves its target)
+  - Kinematics abstraction: Don't manually calculate module velocities - let
+   library do the math
+  - Stateless: No pose tracking (odometry) - just velocity control
+
+  KEY DETAILS:
+  - FTCLib WPILib kinematics: Port of FIRST Robotics Competition (FRC)
+  WPILib library
+    - Battle-tested algorithms (used by hundreds of FRC teams)
+    - Handles complex math: inverse kinematics, wheel desaturation,
+  coordinate transformations
+  - Module ordering CRITICAL: FL, FR, BL, BR
+    - Must match everywhere: constructor, kinematics, setModuleStates(),
+  getModuleStates()
+    - Wrong order → modules get wrong commands → robot moves erratically
+  - Comment discrepancy:
+    - Line 21 says "trust Axon servo internal PID"
+    - But SwerveModule.java actually uses external PID (PIDFController)
+    - Comment outdated from earlier architecture iteration
+
+  CONNECTIONS:
+  - Created by Hardware.java (line 36): swerveDrive = new 
+  SwerveDrive(swerveHardware)
+  - Used by SwerveTeleop.java for driver control
+  - Encapsulates 4 SwerveModule objects (created in constructor)
+
+  ---
+  Part B: Constructor - Module & Kinematics Initialization
+
+  // Lines 36-88
+      public SwerveDrive(SwerveHardware swerveHardware) {
+          // Field-centric drive
+          imu = swerveHardware.imu;
+
+          // Initialize modules (FL, FR, BL, BR order is important - matches
+   kinematics)
+          frontLeft = new SwerveModule(
+              swerveHardware.flDrive,
+              swerveHardware.flSteer,
+              swerveHardware.flEncoder,
+              SteeringConstants.FL_ANGLE_OFFSET,
+              false,  // driveInverted - adjust if motors run backwards
+              false,  // steerInverted
+              "FL"
+          );
+
+          frontRight = new SwerveModule(
+              swerveHardware.frDrive,
+              swerveHardware.frSteer,
+              swerveHardware.frEncoder,
+              SteeringConstants.FR_ANGLE_OFFSET,
+              false,
+              false,
+              "FR"
+          );
+
+          backLeft = new SwerveModule(
+              swerveHardware.blDrive,
+              swerveHardware.blSteer,
+              swerveHardware.blEncoder,
+              SteeringConstants.BL_ANGLE_OFFSET,
+              false,
+              false,
+              "BL"
+          );
+
+          backRight = new SwerveModule(
+              swerveHardware.brDrive,
+              swerveHardware.brSteer,
+              swerveHardware.brEncoder,
+              SteeringConstants.BR_ANGLE_OFFSET,
+              false,
+              false,
+              "BR"
+          );
+
+          // Initialize kinematics with module positions
+          kinematics = new SwerveDriveKinematics(
+              DriveConstants.FL_POSITION,
+              DriveConstants.FR_POSITION,
+              DriveConstants.BL_POSITION,
+              DriveConstants.BR_POSITION
+          );
+      }
+
+  PURPOSE:
+  Instantiate 4 swerve modules and configure kinematics with module
+  positions.
+
+  IMPLEMENTATION:
+
+  Lines 38: Store IMU reference from hardware layer
+
+  Lines 41-79: Create 4 SwerveModule instances
+  - Each gets: motor, servo, encoder, offset, inversion flags, name
+  - All driveInverted and steerInverted currently false (adjust per
+  hardware)
+  - Each has unique calibration offset from SteeringConstants
+
+  Lines 82-87: Initialize kinematics
+  - SwerveDriveKinematics constructor takes module positions (Translation2d)
+  - Positions defined in DriveConstants (relative to robot center)
+  - Order matters: FL, FR, BL, BR
+
+  WHY THIS DESIGN:
+  - Module independence: Each module self-contained (has own hardware + PID)
+  - Kinematics encapsulation: Library handles complex inverse kinematics
+  math
+  - Configuration flexibility: Inversion flags allow hardware variation
+  without rewiring
+  - Position-based kinematics: Robot geometry determines module velocities
+
+  KEY DETAILS:
+  - SwerveModule constructor parameters (reminder):
+  SwerveModule(
+      DcMotorEx driveMotor,      // Drive motor hardware
+      CRServo steerServo,        // Steering servo hardware
+      AnalogInput steerEncoder,  // Analog encoder hardware
+      double angleOffset,        // Calibration offset (radians)
+      boolean driveInverted,     // Reverse drive motor direction?
+      boolean steerInverted,     // Reverse servo direction?
+      String moduleName          // "FL", "FR", "BL", "BR"
+  )
+  - Why all inversions = false?
+    - Default assumes motors/servos wired consistently
+    - If during testing a module behaves backwards, flip its flag to true
+    - Per-module configuration allows mixing motor/servo types
+  - SwerveDriveKinematics internals:
+    - Stores module positions (Translation2d vectors)
+    - Pre-computes inverse kinematics matrices
+    - Provides toSwerveModuleStates() method (used in drive())
+  - Module positions (from DriveConstants):
+  FL: (+0.1925m, +0.1925m)  [forward-left quadrant]
+  FR: (+0.1925m, -0.1925m)  [forward-right quadrant]
+  BL: (-0.1925m, +0.1925m)  [backward-left quadrant]
+  BR: (-0.1925m, -0.1925m)  [backward-right quadrant]
+    - Forms square: 0.385m × 0.385m
+    - Diagonal from center to module: 0.272m
+
+  CONNECTIONS:
+  - Called once during robot initialization (Hardware.java line 36)
+  - Creates 4 SwerveModule objects (each runs independent PID loop)
+  - Kinematics used in drive() method (next section)
+
+  ★ Insight ─────────────────────────────────────
+  Why module positions matter for kinematics:
+  When the robot rotates, wheels must move at different speeds based on
+  their distance from the rotation center. The kinematics equations solve:
+  wheelVelocity = linearVelocity + (angularVelocity × leverArm). For
+  example, if rotating CCW at 1 rad/s around the center, FL wheel (0.272m
+  away) must move at 1 × 0.272 = 0.272 m/s tangentially. Wrong positions in
+  the kinematics constructor → wheels commanded wrong speeds → robot rotates
+   around wrong point!
+  ─────────────────────────────────────────────────
+
+  ---
+  Part 2: Main Drive Method - Velocity Control
+
+  Part A: Method Signature & Field-Centric Logic
+
+  // Lines 90-107
+      /**
+       * Drive the robot with given velocities
+       *
+       * @param xSpeed Forward velocity in m/s (positive = forward)
+       * @param ySpeed Strafe velocity in m/s (positive = left)
+       * @param rotSpeed Rotation velocity in rad/s (positive = CCW)
+       * @param fieldRelative Whether velocities are field-relative 
+  (requires IMU)
+       */
+      public void drive(double xSpeed, double ySpeed, double rotSpeed, 
+  boolean fieldRelative) {
+          ChassisSpeeds chassisSpeeds;
+
+          if (fieldRelative) {
+              chassisSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(
+                  xSpeed, ySpeed, rotSpeed, getGyroAngle()
+              );
+          } else {
+              chassisSpeeds = new ChassisSpeeds(xSpeed, ySpeed, rotSpeed);
+          }
+
+  PURPOSE:
+  Convert high-level velocity commands to robot motion using kinematics.
+
+  IMPLEMENTATION:
+
+  Parameters:
+  - xSpeed: Forward velocity (m/s, + = forward)
+  - ySpeed: Strafe velocity (m/s, + = left)
+  - rotSpeed: Angular velocity (rad/s, + = counter-clockwise)
+  - fieldRelative: Use field-centric mode?
+
+  Lines 101-107: Create ChassisSpeeds object
+  - Field-relative: Transform velocities from field frame to robot frame
+  - Robot-relative: Use velocities as-is (robot frame)
+
+  WHY THIS DESIGN:
+  - Single entry point: All drive commands go through this method
+  - Coordinate frame abstraction: Caller doesn't worry about frame
+  transformations
+  - Mode flexibility: Switch between field/robot-centric dynamically
+
+  KEY DETAILS:
+  - ChassisSpeeds class: FTCLib data structure containing:
+    - vxMetersPerSecond: Forward velocity (robot frame)
+    - vyMetersPerSecond: Strafe velocity (robot frame)
+    - omegaRadiansPerSecond: Angular velocity
+  - Field-centric transformation:
+    - Joystick forward → always moves robot toward far side of field
+  (regardless of robot heading)
+    - Math: Rotate velocity vector by robot heading
+    - Formula:
+    robotVx = fieldVx × cos(heading) + fieldVy × sin(heading)
+  robotVy = -fieldVx × sin(heading) + fieldVy × cos(heading)
+  rotation unchanged (same in both frames)
+  - Robot-centric (no transformation):
+    - Joystick forward → moves robot in direction it's facing
+    - Velocities used directly (no IMU needed)
+  - getGyroAngle(): Returns current robot heading as Rotation2d (covered in
+  Part 3)
+
+  CONNECTIONS:
+  - Called by SwerveTeleop.java every control loop iteration (line 103)
+  - fieldRelative toggled by driver (Options button, line 89-95 in
+  SwerveTeleop)
+  - Velocities scaled from joystick inputs (lines 60-62 in SwerveTeleop)
+
+  ---
+  Part B: Inverse Kinematics Transformation
+
+  // Lines 109-116
+          // Convert chassis speeds to individual module states
+          SwerveModuleState[] moduleStates =
+  kinematics.toSwerveModuleStates(chassisSpeeds);
+
+          // Normalize speeds if any exceed max (preserves motion ratios)
+          SwerveDriveKinematics.normalizeWheelSpeeds(
+              moduleStates,
+              DriveConstants.MAX_SPEED_METERS_PER_SECOND
+          );
+
+  PURPOSE:
+  Transform chassis velocity (robot-level) to module states (wheel-level).
+
+  IMPLEMENTATION:
+
+  Line 110: Inverse kinematics
+  - Input: ChassisSpeeds (vx, vy, omega)
+  - Output: Array of 4 SwerveModuleStates (speed + angle per wheel)
+  - Algorithm: kinematics.toSwerveModuleStates(chassisSpeeds)
+
+  Lines 113-116: Speed normalization
+  - Check if any module speed exceeds MAX_SPEED_METERS_PER_SECOND
+  - If so, scale ALL module speeds proportionally
+  - Preserves direction/rotation while respecting speed limit
+
+  WHY THIS DESIGN:
+  - Kinematics encapsulation: Don't manually solve equations - library does
+  it
+  - Automatic coordination: One method call gives all 4 wheel commands
+  - Desaturation critical: Prevents commanding impossible speeds
+
+  KEY DETAILS:
+  - Inverse kinematics math (simplified):
+  For each module at position (x, y):
+
+  tangentialVelocity = omega × distance_from_center
+  tangentialX = -omega × y  (perpendicular to radius)
+  tangentialY = omega × x
+
+  moduleVx = chassisVx + tangentialX
+  moduleVy = chassisVy + tangentialY
+
+  moduleSpeed = sqrt(moduleVx² + moduleVy²)
+  moduleAngle = atan2(moduleVy, moduleVx)
+  - Example calculation (pure rotation):
+    - Command: vx=0, vy=0, omega=1 rad/s
+    - FL module position: (+0.1925, +0.1925)
+    - FL tangential velocity: omega × 0.272m = 0.272 m/s
+    - FL velocity vector: (-0.1925, +0.1925) m/s (tangent to circle)
+    - FL angle: atan2(0.1925, -0.1925) = 2.356 rad (135°)
+    - FL speed: sqrt(0.1925² + 0.1925²) = 0.272 m/s ✓
+  - normalizeWheelSpeeds() algorithm:
+  maxSpeed = max(|module[0].speed|, |module[1].speed|, |module[2].speed|,
+  |module[3].speed|)
+
+  if (maxSpeed > MAX_SPEED_METERS_PER_SECOND) {
+      scale = MAX_SPEED_METERS_PER_SECOND / maxSpeed
+      for each module:
+          module.speed *= scale  (angle unchanged!)
+  }
+  - Why preserve ratios?
+    - If you just clamp each wheel individually → motion direction changes!
+    - Example: Command diagonal (forward + strafe) → one wheel hits limit
+  before others → robot veers off course
+    - Proportional scaling: Reduces overall speed but maintains intended
+  direction
+  - Array ordering CRITICAL:
+    - moduleStates[0] = Front-Left
+    - moduleStates[1] = Front-Right
+    - moduleStates[2] = Back-Left
+    - moduleStates[3] = Back-Right
+    - Must match kinematics constructor AND setModuleStates() method!
+
+  CONNECTIONS:
+  - kinematics initialized in constructor (lines 82-87)
+  - moduleStates array passed to setModuleStates() (next section)
+  - MAX_SPEED_METERS_PER_SECOND from DriveConstants (3.0 m/s)
+
+  ★ Insight ─────────────────────────────────────
+  Why inverse kinematics is "inverse":
+  Forward kinematics: Given wheel speeds/angles → calculate robot velocity
+  (used in odometry). Inverse kinematics: Given desired robot velocity →
+  calculate required wheel speeds/angles (used in drive control). It's
+  "inverse" because we're solving the equation backwards: instead of "what
+  is the robot doing?", we're asking "what should the wheels do to achieve
+  this robot motion?". The math involves solving a system of equations with
+  one equation per wheel.
+  ─────────────────────────────────────────────────
+
+  ---
+  Part C: Module State Distribution
+
+  // Lines 118-120
+          // Send states to modules
+          setModuleStates(moduleStates);
+      }
+
+  PURPOSE:
+  Delegate module state array to helper method for distribution.
+
+  IMPLEMENTATION:
+  - Call setModuleStates() with computed states
+  - Helper method handles validation and distribution
+
+  WHY THIS DESIGN:
+  - Separation: drive() handles kinematics, setModuleStates() handles module
+   communication
+  - Reusability: setModuleStates() can be called from other methods (e.g.,
+  autonomous)
+  - Validation: Centralize array length checking
+
+  ---
+  Part D: setModuleStates() - Command Distribution
+
+  // Lines 122-135
+      /****
+       * Set desired states for all modules
+       * Order must match kinematics: FL, FR, BL, BR
+       */
+      public void setModuleStates(SwerveModuleState[] desiredStates) {
+          if (desiredStates.length != 4) {
+              throw new IllegalArgumentException("Must provide exactly 4 
+  module states");
+          }
+
+          frontLeft.setDesiredState(desiredStates[0]);
+          frontRight.setDesiredState(desiredStates[1]);
+          backLeft.setDesiredState(desiredStates[2]);
+          backRight.setDesiredState(desiredStates[3]);
+      }
+
+  PURPOSE:
+  Distribute module states to individual SwerveModule objects.
+
+  IMPLEMENTATION:
+  - Line 127: Validate array length (must be exactly 4)
+  - Lines 131-134: Call each module's setDesiredState() method
+
+  WHY THIS DESIGN:
+  - Validation: Catch programming errors (wrong array size)
+  - Explicit ordering: Clear mapping from array index to module
+  - Encapsulation: Modules handle state execution internally
+
+  KEY DETAILS:
+  - Array order MUST match kinematics constructor:
+    - [0] → Front-Left
+    - [1] → Front-Right
+    - [2] → Back-Left
+    - [3] → Back-Right
+  - What happens after this call:
+    a. Each module optimizes its state (avoid >90° rotations)
+    b. Each module's PID controller calculates steering power
+    c. Servos and motors receive power commands
+    d. Modules move toward target states (happens in parallel, not
+  sequential!)
+  - Error handling:
+    - IllegalArgumentException thrown if array wrong size
+    - Exception caught by FTC SDK → OpMode stops gracefully
+    - Prevents array index out of bounds crash
+  - Public method: Can be called externally for autonomous control
+    - Autonomous can compute custom module states
+    - Bypass drive() method and directly command modules
+
+  CONNECTIONS:
+  - Called by drive() method (line 119)
+  - Each module's setDesiredState() triggers PID control loop
+  (SwerveModule.java line 88)
+  - Parallel execution: All 4 modules update simultaneously
+
+  ---
+  Part 3: Helper Methods
+
+  Part A: getModuleStates() - State Query
+
+  // Lines 137-148
+      /**
+       * Get current states of all modules (for odometry/telemetry)
+       * Returns in order: FL, FR, BL, BR
+       */
+      public SwerveModuleState[] getModuleStates() {
+          return new SwerveModuleState[] {
+              frontLeft.getState(),
+              frontRight.getState(),
+              backLeft.getState(),
+              backRight.getState()
+          };
+      }
+
+  PURPOSE:
+  Query all module states for telemetry or odometry.
+
+  IMPLEMENTATION:
+  - Create array of 4 SwerveModuleStates
+  - Each element: module's current state (actual speed + angle from sensors)
+
+  WHY THIS DESIGN:
+  - Telemetry: Display what modules are actually doing
+  - Odometry: Track robot position by integrating wheel movements
+  - Debugging: Compare commanded vs actual states
+
+  KEY DETAILS:
+  - Returns actual states (from encoders), not commanded states
+  - Same ordering: FL, FR, BL, BR (consistency critical)
+  - Used by SwerveTeleop (lines 123, 132-135):
+  SwerveModuleState[] moduleStates = hardware.swerveDrive.getModuleStates();
+  telemetry.addData("FL", "%.1f m/s @ %.0f°",
+      moduleStates[0].speedMetersPerSecond,
+      moduleStates[0].angle.getDegrees());
+
+  ---
+  Part B: stop() - Emergency Stop
+
+  // Lines 150-158
+      /**
+       * Stop all modules (zero power)
+       */
+      public void stop() {
+          frontLeft.stop();
+          frontRight.stop();
+          backLeft.stop();
+          backRight.stop();
+      }
+
+  PURPOSE:
+  Immediately stop all module motion.
+
+  IMPLEMENTATION:
+  - Call each module's stop() method
+  - Each module sets drive motor and steer servo to 0 power
+
+  WHY THIS DESIGN:
+  - Emergency stop: Can be called if something goes wrong
+  - OpMode cleanup: Called at end of teleop (line 109 in SwerveTeleop.java)
+
+  KEY DETAILS:
+  - ⚠️ ENCODER ISSUE: Module.stop() sets servo power to 0.0 → encoders may
+  read incorrectly!
+  - Not a problem at OpMode end (encoders no longer needed)
+  - Do not call during operation if encoder readings still needed
+
+  ---
+  Part C: resetDriveEncoders() - Encoder Reset
+
+  // Lines 160-168
+      /**
+       * Reset all drive encoders to zero
+       */
+      public void resetDriveEncoders() {
+          frontLeft.resetDriveEncoder();
+          frontRight.resetDriveEncoder();
+          backLeft.resetDriveEncoder();
+          backRight.resetDriveEncoder();
+      }
+
+  PURPOSE:
+  Zero all drive motor encoder counts (for odometry).
+
+  IMPLEMENTATION:
+  - Call each module's resetDriveEncoder() method
+  - Each module: STOP_AND_RESET_ENCODER → RUN_WITHOUT_ENCODER
+
+  WHY THIS DESIGN:
+  - Odometry initialization: Start position tracking from known zero point
+  - Per-match reset: Encoder counts accumulate over time
+
+  KEY DETAILS:
+  - Not used in current code (odometry not implemented)
+  - Would be called at start of autonomous for position tracking
+  - Only resets drive encoders (steering encoders are absolute, no reset
+  needed)
+
+  ---
+  Part D: getModule() - Module Accessor
+
+  // Lines 170-181
+      /**
+       * Get a specific module by index (0=FL, 1=FR, 2=BL, 3=BR)
+       */
+      public SwerveModule getModule(int index) {
+          switch (index) {
+              case 0: return frontLeft;
+              case 1: return frontRight;
+              case 2: return backLeft;
+              case 3: return backRight;
+              default: throw new IllegalArgumentException("Invalid module 
+  index: " + index);
+          }
+      }
+
+  PURPOSE:
+  Access individual modules by index (for testing/debugging).
+
+  IMPLEMENTATION:
+  - Switch statement on index (0-3)
+  - Returns corresponding module reference
+  - Throws exception for invalid index
+
+  WHY THIS DESIGN:
+  - Testing OpModes: SwerveModuleTest.java can test one module at a time
+  - Calibration: SwerveCalibration.java needs individual module access
+  - Debugging: Inspect specific module state
+
+  KEY DETAILS:
+  - Index mapping (same as array ordering):
+    - 0 = FL
+    - 1 = FR
+    - 2 = BL
+    - 3 = BR
+  - Used in calibration (would be used if calibration code needed module
+  access):
+  for (int i = 0; i < 4; i++) {
+      SwerveModule module = swerveDrive.getModule(i);
+      double voltage = module.getRawEncoderVoltage();
+      // ... calibration logic
+  }
+
+  ---
+  Part E: IMU Methods - Heading Management
+
+  // Lines 183-204
+      /**
+       * Reset IMU heading to zero
+       */
+      public void zeroHeading() {
+          imu.resetYaw();
+      }
+
+      /**
+       * Get current IMU heading in degrees (for telemetry)
+       */
+      public double getHeadingDegrees() {
+          return getGyroAngle().getDegrees();
+      }
+
+      /**
+       * Get current robot heading as Rotation2d
+       */
+      private Rotation2d getGyroAngle() {
+          return Rotation2d.fromDegrees(
+              imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES)
+          );
+      }
+
+  PURPOSE:
+  Interface with IMU for field-centric drive and heading display.
+
+  IMPLEMENTATION:
+
+  zeroHeading() (line 186-187):
+  - Call IMU's resetYaw() method
+  - Sets current heading as new 0° reference
+
+  getHeadingDegrees() (line 192-194):
+  - Public method for telemetry
+  - Returns heading in degrees (easier to read than radians)
+
+  getGyroAngle() (line 200-204):
+  - Private helper method
+  - Reads IMU yaw angle and wraps in Rotation2d object
+  - Used by field-centric transformation
+
+  WHY THIS DESIGN:
+  - Zero heading: Driver can reset "forward" direction at any time
+  - Degrees for humans: Telemetry shows degrees (intuitive)
+  - Radians for math: Kinematics uses Rotation2d (radians internally)
+  - Encapsulation: IMU details hidden behind simple interface
+
+  KEY DETAILS:
+  - IMU.resetYaw():
+    - Sets current orientation as 0° reference
+    - Does not affect pitch/roll (only yaw)
+    - Instant operation (no calibration wait)
+  - getRobotYawPitchRollAngles():
+    - FTC SDK method returning 3D orientation
+    - Uses IMU configuration from SwerveHardware.java (LEFT/BACKWARD)
+    - Returns angles in robot frame (already transformed from IMU frame)
+  - Rotation2d.fromDegrees():
+    - Converts degrees → radians internally
+    - Stores as cos/sin pair (efficient for rotations)
+    - Used by ChassisSpeeds.fromFieldRelativeSpeeds()
+  - Heading direction:
+    - 0° = direction robot facing when zeroHeading() called
+    - Positive = counter-clockwise (CCW)
+    - Negative = clockwise (CW)
+    - Range: -180° to +180° (wraps at ±180°)
+
+  CONNECTIONS:
+  - zeroHeading() called by SwerveTeleop when Start button pressed (line 99)
+  - getHeadingDegrees() used in telemetry (SwerveTeleop line 128)
+  - getGyroAngle() used in field-centric transformation (line 103)
+  - IMU reference from SwerveHardware (line 38)
+
+  ★ Insight ─────────────────────────────────────
+  Why field-centric needs heading:
+  In robot-centric mode, "joystick forward" means "move in the direction the
+   robot is facing". But in field-centric mode, "joystick forward" should
+  mean "move toward the far side of the field" regardless of robot
+  orientation. To achieve this, we need to know the robot's heading relative
+   to the field. The transformation rotates the joystick input vector by the
+   heading angle, so forward always means forward relative to the field, not
+   the robot. This is why competitive teams prefer field-centric - you can
+  focus on field positioning without mentally compensating for robot
+  rotation!
+  ─────────────────────────────────────────────────
+
+  ---
+  Part F: Commented Odometry Section
+
+  // Lines 206-213
+      // For odometry - update robot pose based on module states (not needed
+   for basic teleop)
+      /*
+      public void updateOdometry() {
+          // Implementation depends on odometry class setup
+          // See FTCLib SwerveDriveOdometry documentation
+      }
+      */
+  }
+
+  PURPOSE:
+  Placeholder for future odometry implementation.
+
+  IMPLEMENTATION:
+  - Commented out method stub
+  - References FTCLib SwerveDriveOdometry class
+
+  WHY THIS DESIGN:
+  - Future feature: Odometry needed for autonomous path following
+  - Not needed for teleop: Driver controls position visually
+  - Documented: Comment explains what would go here
+
+  KEY DETAILS:
+  - Odometry concept: Track robot position by integrating wheel movements
+    - Read module states (speeds + angles)
+    - Calculate distance traveled in 1 loop iteration
+    - Update pose (x, y, heading) based on movement
+    - Accumulates over time → know where robot is on field
+  - FTCLib SwerveDriveOdometry:
+    - Handles math: module states + heading → pose update
+    - Constructor needs: kinematics, initial pose
+    - Called every loop: odometry.update(gyroAngle, moduleStates)
+    - Returns current pose: Pose2d pose = odometry.getPoseMeters()
+  - Why commented out?
+    - Teleop doesn't need position tracking (driver sees field)
+    - Autonomous would need this for navigation
+    - Kept as reference for future implementation
+
+  ---
+  SwerveDrive Summary
+
+  Data Flow (every control loop iteration):
+  SwerveTeleop calls drive(vx, vy, omega, fieldRelative)
+    ↓
+  Transform to robot frame (if field-centric)
+    ChassisSpeeds.fromFieldRelativeSpeeds() using IMU heading
+    ↓
+  Inverse kinematics
+    kinematics.toSwerveModuleStates(chassisSpeeds)
+    → Produces 4 SwerveModuleStates (speed + angle per wheel)
+    ↓
+  Speed normalization
+    SwerveDriveKinematics.normalizeWheelSpeeds()
+    → Scales speeds if any exceed max (preserves ratios)
+    ↓
+  Distribute to modules
+    setModuleStates() → each module.setDesiredState()
+    ↓
+  Each module independently:
+    - Optimizes state (avoid >90° rotation)
+    - PID controls steering angle
+    - Feedforward controls drive speed
+    ↓
+  Robot moves as commanded!
+
+  Critical Concepts:
+  1. Inverse Kinematics: Robot velocity → wheel velocities (complex math
+  handled by library)
+  2. Field-Centric Transform: Rotate velocity vector by heading (always
+  drive relative to field)
+  3. Module Ordering: FL, FR, BL, BR everywhere (kinematics, arrays, method
+  calls)
+  4. Speed Normalization: Scale all wheels proportionally if exceeding max
+  speed
+  5. IMU Integration: Heading measurement enables field-centric drive
+  6. Encapsulation: SwerveDrive coordinates, SwerveModule executes
+
+  Architecture Strengths:
+  - Clean separation: coordination vs execution
+  - Library handles complex math (kinematics, desaturation)
+  - Flexible: supports field/robot-centric, autonomous/teleop
+  - Modular: easy to add odometry, path following, etc.
+
+  Ready for Phase 1.5 (SwerveTeleop.java - Driver Control)?
+
+> ok continue 
+
+● 🎮 PHASE 1.5: TELEOP CONTROL (SwerveTeleop.java)
+
+  This is the driver interface - where human input (gamepad) becomes robot
+  motion. This OpMode is what drivers use during matches.
+
+  ---
+  Part 1: Class Structure & Initialization
+
+  Part A: Class Declaration & Imports
+
+  // Lines 1-24
+  package org.firstinspires.ftc.teamcode.Opmodes;
+
+  import
+  com.arcrobotics.ftclib.kinematics.wpilibkinematics.SwerveModuleState;
+  import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+  import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+
+  import org.firstinspires.ftc.teamcode.Constants.ControlConstants;
+  import org.firstinspires.ftc.teamcode.Constants.DriveConstants;
+  import org.firstinspires.ftc.teamcode.Constants.OuttakeConstants;
+  import org.firstinspires.ftc.teamcode.Hardware.Hardware;
+  import org.firstinspires.ftc.teamcode.Subsystems.Intake;
+  import org.firstinspires.ftc.teamcode.Subsystems.Outtake;
+
+  /**
+   * Swerve Drive TeleOp
+   *
+   * Controls:
+   * - Left Stick: Forward/Backward/Strafe
+   * - Right Stick X: Rotation
+   * - Cross: Outtake (2700 RPM default, +L_Bumper = 1500, +R_Bumper = 4000)
+   * - Square: Intake
+   */
+  @TeleOp(name = "Swerve TeleOp")
+  public class SwerveTeleop extends LinearOpMode {
+
+  PURPOSE:
+  Driver-controlled operation mode for competition matches.
+
+  IMPLEMENTATION:
+  - @TeleOp annotation: Registers OpMode with FTC Driver Station (appears in
+   TeleOp menu)
+  - LinearOpMode: Sequential execution model (easier than iterative for
+  beginners)
+  - Control documentation: Comment block describes button mapping
+
+  WHY THIS DESIGN:
+  - Clear documentation: Drivers know controls without reading code
+  - Standard FTC pattern: LinearOpMode with runOpMode() method
+  - Name visible: "Swerve TeleOp" appears in Driver Station OpMode list
+
+  KEY DETAILS:
+  - @TeleOp vs @Autonomous:
+    - @TeleOp: Driver control, appears in TeleOp menu
+    - @Autonomous: Pre-programmed, appears in Autonomous menu
+    - Same code can work for both (just different annotation)
+  - LinearOpMode structure:
+    - runOpMode(): Main method (like main() in regular Java)
+    - waitForStart(): Blocks until driver presses START
+    - opModeIsActive(): Loop condition (stops when STOP pressed)
+
+  CONNECTIONS:
+  - Creates Hardware object (centralizes all hardware initialization)
+  - Uses SwerveDrive, Intake, Outtake subsystems
+
+  ---
+  Part B: Field Declarations
+
+  // Lines 26-34
+      private Hardware hardware;
+
+      private Outtake outtake;
+
+      private Intake intake;
+
+      // Field-centric drive control
+      private boolean fieldCentric = true;  // Start in field-centric mode
+      private boolean lastFieldCentricButton = false;
+
+  PURPOSE:
+  Store references to subsystems and maintain control state.
+
+  IMPLEMENTATION:
+  - hardware: Central hardware manager (SwerveDrive + game mechanisms)
+  - outtake, intake: Game-specific subsystems (shooting/collecting game
+  pieces)
+  - fieldCentric: Current drive mode (true = field-centric, false =
+  robot-centric)
+  - lastFieldCentricButton: Previous button state (for edge detection)
+
+  WHY THIS DESIGN:
+  - Subsystem references: Access hardware throughout OpMode
+  - State tracking: Remember drive mode between loop iterations
+  - Edge detection: Detect button press (not just button held)
+
+  KEY DETAILS:
+  - Default field-centric: Starts in field-centric mode (preferred by
+  experienced drivers)
+  - Button edge detection pattern:
+  currentState = gamepad.button
+  if (currentState && !lastState) {
+      // Button just pressed (rising edge)
+  }
+  lastState = currentState
+    - Prevents toggle spamming (requires release before next toggle)
+  - Why separate outtake/intake references?
+    - Already accessible via hardware.outtake, hardware.intake
+    - Separate references for convenience (shorter code)
+    - Set in initialization section
+
+  ---
+  Part 2: OpMode Initialization
+
+  Part A: runOpMode() Start & Hardware Initialization
+
+  // Lines 36-45
+      @Override
+      public void runOpMode() {
+          hardware = new Hardware(hardwareMap);
+          outtake = new Outtake(hardware);
+          intake = new Intake(hardware);
+          telemetry.addData("Status", "Initialized");
+          telemetry.addData("Mode", "Field-Centric (Options to toggle)");
+          telemetry.addData("Controls", "Start = Zero Heading");
+          telemetry.update();
+
+          waitForStart();
+
+  PURPOSE:
+  Initialize robot hardware and wait for driver to start match.
+
+  IMPLEMENTATION:
+
+  Line 38: Create Hardware object
+  - Initializes all motors, servos, encoders, IMU
+  - Creates SwerveDrive subsystem
+  - One line = entire robot initialization!
+
+  Lines 39-40: Create game mechanism subsystems
+  - Outtake: Flywheel shooter
+  - Intake: Collector mechanism
+
+  Lines 41-44: Display initialization status
+  - Shows driver that robot is ready
+  - Documents controls (field-centric toggle, heading reset)
+
+  Line 46: Wait for START button
+  - Blocks here until driver presses START on Driver Station
+  - Allows drivers to set up before match begins
+
+  WHY THIS DESIGN:
+  - Centralized initialization: Hardware class handles complexity
+  - Clear feedback: Telemetry confirms ready state
+  - FTC competition flow: Initialize → wait → compete (standard pattern)
+
+  KEY DETAILS:
+  - hardwareMap parameter: Provided by FTC SDK
+    - Maps device names to hardware objects
+    - Populated from Robot Controller configuration
+  - Initialization order matters:
+    a. Hardware (creates SwerveDrive, SwerveHardware)
+    b. Game mechanisms (depend on hardware being ready)
+    c. Telemetry (provides driver feedback)
+  - waitForStart() behavior:
+    - Blocking call (doesn't return until START pressed)
+    - During wait: Robot idle, telemetry visible
+    - After START: Proceeds to main loop
+
+  CONNECTIONS:
+  - Hardware constructor triggers entire initialization chain (Hardware →
+  SwerveHardware → SwerveDrive → 4× SwerveModule)
+  - Creates objects used throughout main loop
+
+  ---
+  Part 3: Main Control Loop
+
+  Part A: Input Reading & Coordinate Transformation
+
+  // Lines 48-58
+          while (opModeIsActive()) {
+              // ========== READ INPUTS ==========
+              // Coordinate system: +X=forward, +Y=left, +rotation=CCW
+              // Gamepad: stick up=-Y, stick right=+X, right stick right=+X
+              double forward = -gamepad1.left_stick_y;    // Stick up → +X 
+  (forward)
+              double strafe = -gamepad1.left_stick_x;     // Stick right → 
+  -Y (right)  [FIXED]
+              double rotation = -gamepad1.right_stick_x;  // Stick right → 
+  -rotation (CW)  [FIXED]
+
+              forward = applyDeadband(forward,
+  ControlConstants.JOYSTICK_DEADBAND);
+              strafe = applyDeadband(strafe,
+  ControlConstants.JOYSTICK_DEADBAND);
+              rotation = applyDeadband(rotation,
+  ControlConstants.JOYSTICK_DEADBAND);
+
+  PURPOSE:
+  Read gamepad inputs and transform to WPILib coordinate system.
+
+  IMPLEMENTATION:
+
+  Line 48: Main loop
+  - opModeIsActive(): Returns true until STOP pressed or match ends
+  - Runs continuously during match (typically 50-100 Hz)
+
+  Lines 52-54: Read raw joystick inputs with inversions
+  - forward = -left_stick_y: Invert Y axis (stick up = -1, want +1)
+  - strafe = -left_stick_x: Invert X axis (stick right = +1, want -1 for
+  +Y=left)
+  - rotation = -right_stick_x: Invert rotation (stick right = +1, want -1
+  for CW)
+
+  Lines 56-58: Apply deadband
+  - Values within ±0.05 → set to 0.0
+  - Eliminates joystick drift
+
+  WHY THIS DESIGN:
+  - Coordinate system mismatch: Gamepad coordinates ≠ WPILib coordinates
+  - Inversions critical: Make joystick directions match robot motion
+  - Deadband essential: Prevents unintended motion from joystick noise
+
+  KEY DETAILS:
+  - Gamepad coordinate system:
+    - Left stick Y: Up = -1.0, Down = +1.0 (inverted!)
+    - Left stick X: Left = -1.0, Right = +1.0
+    - Right stick X: Left = -1.0, Right = +1.0
+  - WPILib coordinate system (robot frame):
+    - +X = forward (toward front of robot)
+    - +Y = left (toward left side of robot)
+    - +rotation = counter-clockwise (CCW)
+  - Why these specific inversions?
+    - Forward: Gamepad up=-1, but +X=forward, so negate
+    - Strafe: Gamepad right=+1, but +Y=left (not right!), so negate
+    - Rotation: Intuitive control wants right=clockwise, but +rotation=CCW,
+  so negate
+  - Comment annotations:
+    - [FIXED] indicates these were bugs found and corrected
+    - Original code: strafe = gamepad1.left_stick_x (no negation)
+    - Bug: Robot strafed opposite direction from joystick
+
+  CONNECTIONS:
+  - Uses applyDeadband() helper method (lines 114-119)
+  - Transformed values passed to velocity scaling (next section)
+  - JOYSTICK_DEADBAND from ControlConstants (0.05)
+
+  ★ Insight ─────────────────────────────────────
+  Why coordinate system consistency matters:
+  Every robotics library has conventions (FRC uses NWU: North-West-Up, ROS
+  uses ENU: East-North-Up). FTCLib uses WPILib conventions since it's a port
+   of FRC libraries. If you don't transform gamepad inputs to match these
+  conventions, the robot will move in unpredictable directions! The
+  inversions are the "translation layer" between human intuition (joystick
+  directions) and mathematical convention (coordinate frames). This is why
+  documenting your coordinate system is crucial!
+  ─────────────────────────────────────────────────
+
+  ---
+  Part B: Velocity Scaling
+
+  // Lines 60-62
+              forward *= DriveConstants.MAX_SPEED_METERS_PER_SECOND;
+              strafe *= DriveConstants.MAX_SPEED_METERS_PER_SECOND;
+              rotation *= DriveConstants.MAX_ANGULAR_VELOCITY;
+
+  PURPOSE:
+  Scale joystick inputs ([-1, 1]) to real-world velocities (m/s, rad/s).
+
+  IMPLEMENTATION:
+  - Linear velocities: Multiply by MAX_SPEED_METERS_PER_SECOND (3.0 m/s)
+  - Angular velocity: Multiply by MAX_ANGULAR_VELOCITY (π rad/s)
+
+  WHY THIS DESIGN:
+  - Units conversion: Joystick unitless ([-1, 1]) → physical units (m/s,
+  rad/s)
+  - Speed limiting: Maximum commanded velocity = constant value (safety +
+  traction)
+  - Proportional control: Half joystick deflection = half max speed
+
+  KEY DETAILS:
+  - Scaling math:
+  forward range: [-1.0, 1.0] → [-3.0, 3.0] m/s
+  strafe range: [-1.0, 1.0] → [-3.0, 3.0] m/s
+  rotation range: [-1.0, 1.0] → [-π, π] rad/s
+  - Example calculation:
+    - Joystick: forward=0.5, strafe=0.3, rotation=-0.8
+    - After scaling: forward=1.5 m/s, strafe=0.9 m/s, rotation=-2.51 rad/s
+  - Why different units?
+    - Linear motion: meters per second (translational velocity)
+    - Rotation: radians per second (angular velocity)
+    - Cannot directly compare (different dimensions)
+  - Driver experience:
+    - Full joystick forward = maximum speed (3.0 m/s)
+    - Half joystick = half speed (1.5 m/s)
+    - Smooth, proportional control (not binary on/off)
+
+  CONNECTIONS:
+  - Constants from DriveConstants (lines 47, 49)
+  - Scaled values passed to drive() method (line 103)
+  - Kinematics will further normalize if combined motion exceeds limits
+
+  ---
+  Part C: Game Mechanism Controls
+
+  // Lines 64-87
+              // ========== SUBSYSTEM CONTROLS ==========
+              //TODO this is only for testing, proper controls need to be 
+  decided upon by the driving team
+              if (gamepad1.cross) {
+                  if (gamepad1.left_bumper) {
+                      outtake.setTargetRPM(1500);
+                  } else if (gamepad1.right_bumper) {
+                      outtake.setTargetRPM(4000);
+                  } else {
+                      outtake.setTargetRPM(OuttakeConstants.TARGET_RPM);
+                  }
+              } else {
+                  outtake.stop();
+              }
+
+              // Call rampShoot BEFORE update so state machine runs before 
+  execute()
+              outtake.rampShoot(gamepad1.triangle);
+
+              outtake.update();
+
+              if (gamepad1.square) {
+                  intake.Start(0.9);
+              } else {
+                  intake.Stop();
+              }
+
+  PURPOSE:
+  Control game-specific mechanisms (shooting/collecting game pieces).
+
+  IMPLEMENTATION:
+
+  Lines 66-76 - Outtake control:
+  - Cross button: Activate outtake
+  - Left bumper: Slow speed (1500 RPM)
+  - Right bumper: Fast speed (4000 RPM)
+  - No bumpers: Default speed (OuttakeConstants.TARGET_RPM)
+  - Button released: Stop outtake
+
+  Line 79: Ramp shoot state machine
+  - Triangle button triggers ramping sequence
+
+  Line 81: Update outtake state
+  - Process state machine, update motor speeds
+
+  Lines 83-87 - Intake control:
+  - Square button: Run intake at 90% power
+  - Button released: Stop intake
+
+  WHY THIS DESIGN:
+  - Speed presets: Different game situations need different shot speeds
+  - Simple controls: One button per mechanism (easy to learn)
+  - State management: Outtake has complex state machine (ramp → shoot
+  sequence)
+
+  KEY DETAILS:
+  - TODO comment: Control scheme temporary, needs driver team input
+    - Competition teams iterate on controls during practice
+    - What feels intuitive varies by driver preference
+  - Outtake RPM options:
+    - 1500 RPM: Close shots, low power
+    - 2700 RPM: Default (from OuttakeConstants)
+    - 4000 RPM: Far shots, high power
+  - Why call rampShoot() before update()?
+    - State machine needs to process input before executing current state
+    - Order: Input → State transition → Execute state actions
+    - Wrong order: Execute old state, then transition (1 frame lag)
+  - Intake power 0.9:
+    - 90% power (not full 1.0)
+    - Slight reduction prevents jamming or excessive wear
+    - Can be tuned based on mechanism performance
+
+  CONNECTIONS:
+  - Outtake/Intake classes handle mechanism-specific logic
+  - OuttakeConstants.TARGET_RPM default (probably 2700 RPM based on comment)
+  - These mechanisms independent of swerve drive (can operate
+  simultaneously)
+
+  ---
+  Part D: Field-Centric Toggle & Heading Reset
+
+  // Lines 89-100
+              // ========== FIELD-CENTRIC CONTROLS ==========
+              // Options button toggles field-centric mode
+              boolean currentFieldCentricButton = gamepad1.options;
+              if (currentFieldCentricButton && !lastFieldCentricButton) {
+                  fieldCentric = !fieldCentric;
+              }
+              lastFieldCentricButton = currentFieldCentricButton;
+
+              // Start button resets heading (zero gyro)
+              if (gamepad1.start) {
+                  hardware.swerveDrive.zeroHeading();
+              }
+
+  PURPOSE:
+  Allow driver to toggle drive mode and reset heading reference.
+
+  IMPLEMENTATION:
+
+  Lines 91-95 - Field-centric toggle:
+  - Read Options button state
+  - Edge detection: If button just pressed (was false, now true) → toggle
+  mode
+  - Update previous state for next iteration
+
+  Line 97-100 - Heading reset:
+  - If Start button pressed: Reset IMU yaw to 0°
+  - No edge detection (can hold button, executes every frame)
+
+  WHY THIS DESIGN:
+  - Toggle vs hold: Field-centric toggle needs edge detection (prevents
+  rapid flipping)
+  - Heading reset: Can hold Start continuously (resets every frame = same
+  effect)
+  - Driver flexibility: Switch modes mid-match based on situation
+
+  KEY DETAILS:
+  - Edge detection logic:
+  Current=true, Last=false → Rising edge (button just pressed) → Toggle!
+  Current=true, Last=true → Button held (no action)
+  Current=false, Last=true → Falling edge (button released) (no action)
+  Current=false, Last=false → Button not pressed (no action)
+  - Why toggle field-centric?
+    - Field-centric (default): Good for navigation, positioning
+    - Robot-centric: Better for precise manipulation, driver faces robot
+    - Example: Driver might switch to robot-centric when aligning to score
+  - When to reset heading:
+    - Start of match: Set "forward" as initial robot orientation
+    - After repositioning: If robot turned around, reset to face "forward"
+  again
+    - Driver convenience: Redefine forward based on current situation
+  - Why no edge detection for heading reset?
+    - Resetting multiple times = same result (idempotent operation)
+    - Simpler code (no extra state variable needed)
+    - Driver can "hold to confirm" (haptic feedback)
+
+  CONNECTIONS:
+  - fieldCentric variable passed to drive() method (line 103)
+  - zeroHeading() calls IMU.resetYaw() (SwerveDrive.java line 187)
+  - Telemetry displays current mode (line 127)
+
+  ★ Insight ─────────────────────────────────────
+  Why field-centric toggle is powerful:
+  Imagine the robot rotated 90° clockwise during a match. In robot-centric
+  mode, the driver must mentally compensate: "I want to go to the left wall,
+   but the robot is sideways, so I push the stick forward". Exhausting! In
+  field-centric mode: "I want to go left, I push stick left" - the
+  coordinate transformation handles the rotation automatically. But
+  sometimes robot-centric is better: when the driver is directly behind the
+  robot watching its actions, robot-relative controls are more intuitive.
+  The toggle gives drivers the best of both worlds!
+  ─────────────────────────────────────────────────
+
+  ---
+  Part E: Drive Execution
+
+  // Lines 102-103
+              // ========== DRIVE CONTROL ==========
+             hardware.swerveDrive.drive(forward, strafe, rotation,
+  fieldCentric);
+
+  PURPOSE:
+  Execute swerve drive with processed inputs.
+
+  IMPLEMENTATION:
+  - Single method call to SwerveDrive.drive()
+  - Passes: forward velocity, strafe velocity, rotation velocity,
+  field-centric flag
+
+  WHY THIS DESIGN:
+  - Simplicity: All complexity hidden in subsystem
+  - One line: Coordinate transformation, kinematics, PID - all handled
+  internally
+
+  KEY DETAILS:
+  - What happens in this call (recap from SwerveDrive walkthrough):
+    a. Transform to robot frame (if field-centric)
+    b. Inverse kinematics (chassis velocity → module states)
+    c. Normalize speeds (if exceeding max)
+    d. Distribute states to 4 modules
+    e. Each module: state optimization → PID control → hardware commands
+  - Execution time: Typically 5-10 ms per call
+    - Kinematics: ~1 ms (matrix math)
+    - Module control: ~1-2 ms per module (parallel)
+    - Total loop: 50-100 Hz (10-20 ms/iteration)
+
+  CONNECTIONS:
+  - Calls SwerveDrive.drive() (lines 98-120 in SwerveDrive.java)
+  - Inputs: Scaled velocities from lines 60-62
+  - Field-centric flag from line 33, toggled by Options button
+
+  ---
+  Part F: Telemetry Display
+
+  // Lines 105-107
+              // ========== TELEMETRY ==========
+              updateTelemetry(forward, strafe, rotation);
+          }
+
+  PURPOSE:
+  Update Driver Station display with robot status.
+
+  IMPLEMENTATION:
+  - Call helper method updateTelemetry()
+  - Pass current input values for display
+
+  WHY THIS DESIGN:
+  - Separate method: Keeps main loop clean, telemetry logic isolated
+  - Real-time feedback: Driver sees what robot is doing
+  - Debugging: Identify issues during matches
+
+  ---
+  Part G: OpMode Cleanup
+
+  // Lines 109-112
+          hardware.swerveDrive.stop();
+          intake.Stop();
+          outtake.stop();
+      }
+
+  PURPOSE:
+  Safely shut down robot when OpMode ends.
+
+  IMPLEMENTATION:
+  - Stop swerve drive (zero all module power)
+  - Stop intake
+  - Stop outtake
+
+  WHY THIS DESIGN:
+  - Safety: Ensure motors don't continue running after OpMode stops
+  - FTC requirement: OpModes should clean up resources
+  - Graceful shutdown: Prevents unexpected behavior
+
+  KEY DETAILS:
+  - When this executes:
+    - Driver presses STOP button
+    - Match timer expires
+    - Emergency stop triggered
+    - opModeIsActive() returns false → exits while loop → cleanup runs
+  - ⚠️ Encoder issue: stop() sets servo power to 0.0 → encoders may read
+  incorrectly
+    - Not a problem here (OpMode ending, encoders no longer needed)
+
+  ---
+  Part 4: Helper Methods
+
+  Part A: applyDeadband() - Joystick Noise Filtering
+
+  // Lines 114-119
+      private double applyDeadband(double value, double deadband) {
+          if (Math.abs(value) < deadband) {
+              return 0.0;
+          }
+          return value;
+      }
+
+  PURPOSE:
+  Zero small joystick values to eliminate drift.
+
+  IMPLEMENTATION:
+  - If absolute value < deadband threshold → return 0.0
+  - Otherwise → return original value unchanged
+
+  WHY THIS DESIGN:
+  - Simple threshold: Clean cutoff at deadband value
+  - No scaling: Values outside deadband unchanged (maintains proportional
+  feel)
+
+  KEY DETAILS:
+  - Deadband = 0.05: Values in range [-0.05, +0.05] → 0.0
+  - Effect on control:
+    - Joystick at rest: Reads ±0.02 (noise) → 0.0 (no motion) ✓
+    - Joystick at 0.1: Passes through unchanged → 0.1 (10% speed)
+  - Alternative implementations:
+    - Scaled deadband: (value - deadband) / (1 - deadband)
+        - Removes deadband AND scales remaining range to [0, 1]
+      - Pro: Smooth transition at deadband edge
+      - Con: More complex, slightly unnatural feel
+    - Current (simple threshold):
+        - Pro: Easy to understand, maintains proportional feel
+      - Con: Slight "jump" from 0 to 0.05 (usually unnoticeable)
+  - Tuning deadband:
+    - Too small (0.01): Robot drifts, drivers frustrated
+    - Too large (0.15): Controls feel sluggish, hard to make small
+  adjustments
+    - 0.05 (5%): Sweet spot for most FTC gamepads
+
+  CONNECTIONS:
+  - Called for all 3 inputs: forward, strafe, rotation (lines 56-58)
+  - JOYSTICK_DEADBAND from ControlConstants (0.05)
+  - Critical for preventing unintended motion
+
+  ---
+  Part B: updateTelemetry() - Driver Station Display
+
+  // Lines 121-149
+      private void updateTelemetry(double forward, double strafe, double 
+  rotation) {
+          // Get module states
+          SwerveModuleState[] moduleStates =
+  hardware.swerveDrive.getModuleStates();
+
+          // === SWERVE DRIVE STATUS ===
+          telemetry.addLine("=== SWERVE DRIVE ===");
+          telemetry.addData("Mode", fieldCentric ? "Field-Centric" :
+  "Robot-Centric");
+          telemetry.addData("Heading", "%.1f°",
+  hardware.swerveDrive.getHeadingDegrees());
+          telemetry.addData("Input", "F:%.2f S:%.2f R:%.2f", forward,
+  strafe, rotation);
+
+          // Module states (compact 1-line format)
+          telemetry.addData("FL", "%.1f m/s @ %.0f°",
+  moduleStates[0].speedMetersPerSecond, moduleStates[0].angle.getDegrees());
+          telemetry.addData("FR", "%.1f m/s @ %.0f°",
+  moduleStates[1].speedMetersPerSecond, moduleStates[1].angle.getDegrees());
+          telemetry.addData("BL", "%.1f m/s @ %.0f°",
+  moduleStates[2].speedMetersPerSecond, moduleStates[2].angle.getDegrees());
+          telemetry.addData("BR", "%.1f m/s @ %.0f°",
+  moduleStates[3].speedMetersPerSecond, moduleStates[3].angle.getDegrees());
+          telemetry.addLine();
+
+          // === GAME MECHANISMS (COMPACT) ===
+          // Outtake status
+          String outtakeStatus = outtake.isActive() ?
+              String.format("ON @ %.0f RPM (Avg: %.0f)",
+  outtake.getTargetRPM(), outtake.getAverageRPM()) :
+              "OFF";
+          telemetry.addData("Outtake", outtakeStatus);
+
+          // Intake status
+          telemetry.addData("Intake", gamepad1.square ? "RUNNING" : "OFF");
+
+          telemetry.update();
+      }
+
+  PURPOSE:
+  Display comprehensive robot status on Driver Station.
+
+  IMPLEMENTATION:
+
+  Line 123: Query module states (actual speeds/angles from encoders)
+
+  Lines 126-129: Swerve drive info
+  - Current mode (field/robot-centric)
+  - IMU heading in degrees
+  - Input values (forward, strafe, rotation)
+
+  Lines 132-135: Individual module states
+  - Each module: Speed (m/s) @ Angle (degrees)
+  - Compact 1-line format per module
+
+  Lines 139-147: Game mechanism status
+  - Outtake: ON/OFF, target RPM, actual RPM
+  - Intake: RUNNING/OFF
+
+  Line 148: Push updates to Driver Station
+
+  WHY THIS DESIGN:
+  - Hierarchical display: Grouped by system (drive, mechanisms)
+  - Compact format: Fits in Driver Station's limited screen space
+  - Real-time feedback: Driver sees what robot is doing
+  - Debugging info: Module states help diagnose control issues
+
+  KEY DETAILS:
+  - Telemetry formatting:
+    - "%.1f": 1 decimal place (e.g., 2.3 m/s)
+    - "%.0f": No decimals (e.g., 45°)
+    - "%.2f": 2 decimal places (e.g., 0.75 input)
+  - Module state display:
+    - Shows actual states (from sensors), not commanded
+    - Example: FL: 1.2 m/s @ 45°
+    - Helps detect issues: If commanded 90° but shows 45° → PID problem
+  - Outtake conditional display:
+    - If active: Shows target and actual RPM
+    - If off: Just shows "OFF"
+    - Ternary operator: condition ? valueIfTrue : valueIfFalse
+  - Update rate: Called every loop iteration (50-100 Hz)
+    - Driver Station throttles to ~4 Hz (FTC SDK limitation)
+    - Latest data always sent, intermediate values dropped
+  - Performance impact: Minimal
+    - Telemetry formatting: ~1-2 ms
+    - Transmission: Asynchronous (doesn't block loop)
+
+  CONNECTIONS:
+  - Gets module states from SwerveDrive (line 123)
+  - Gets heading from SwerveDrive.getHeadingDegrees() (line 128)
+  - Gets outtake status from Outtake subsystem (lines 140-141)
+  - Displays gamepad1.square state for intake (line 146)
+
+  ★ Insight ─────────────────────────────────────
+  Why telemetry is crucial during development:
+  During testing, you might command the robot to drive forward, but it veers
+   left. Is it a control problem? Kinematics bug? Module miscalibration? By
+  displaying module states, you can see: "FL module at 45° instead of 0°" -
+  immediately identifies which module has an issue. Or "All modules at
+  correct angles but FL speed is 0 m/s" - motor problem, not steering!
+  Telemetry transforms vague issues ("robot acts weird") into specific,
+  debuggable problems. In competition, drivers use it to verify robot state
+  before critical actions ("Heading shows 0°, I'm aligned for scoring").
+  ─────────────────────────────────────────────────
+
+  ---
+  SwerveTeleop Summary
+
+  Control Flow (every loop iteration, ~50-100 Hz):
+  1. Read gamepad inputs (left stick, right stick)
+     ↓
+  2. Transform coordinates (invert Y axes, invert rotation)
+     ↓
+  3. Apply deadband (zero values < 0.05)
+     ↓
+  4. Scale to velocities (joystick [-1,1] → m/s, rad/s)
+     ↓
+  5. Read mechanism controls (cross, square, triangle, bumpers)
+     ↓
+  6. Check field-centric toggle (Options button edge detection)
+     ↓
+  7. Check heading reset (Start button)
+     ↓
+  8. Call drive() → Entire swerve control chain executes
+     ↓
+  9. Update game mechanisms (outtake/intake)
+     ↓
+  10. Update telemetry display
+     ↓
+  11. Loop repeats until STOP pressed
+
+  Critical Concepts:
+  1. Coordinate Transformations: Gamepad → WPILib (inversions critical!)
+  2. Deadband Filtering: Eliminate joystick drift/noise
+  3. Velocity Scaling: Unitless input → physical units (m/s, rad/s)
+  4. Edge Detection: Detect button press (not just button held) for toggles
+  5. Field-Centric Mode: Drive relative to field, not robot orientation
+  6. Telemetry: Real-time feedback for drivers and debugging
+
+  Driver Experience:
+  - Left stick: Translational motion (forward/backward/strafe)
+  - Right stick X: Rotational motion (spin in place)
+  - Options: Toggle field/robot-centric
+  - Start: Reset "forward" direction
+  - Cross/Square: Game mechanism control
+  - Screen: See robot status (heading, module states, mechanism status)
+
+  ---
+  🎉 CODE WALKTHROUGH COMPLETE!
+
+  You now understand the entire swerve drive system from hardware to teleop:
+
+  1. ✅ Hardware Layer: Device initialization, IMU configuration
+  2. ✅ Constants: Robot dimensions, PID gains, calibration offsets
+  3. ✅ SwerveModule: Individual module control (PID steering + feedforward
+  drive)
+  4. ✅ SwerveDrive: Coordination layer (inverse kinematics, module
+  management)
+  5. ✅ SwerveTeleop: Driver interface (input processing, mode control)
+
+  Next Steps:
+  - Phase 2: Update CLAUDE.md with comprehensive documentation
+  - Phase 3: Retrospective analysis (identify redundancy, logic issues,
+  improvements)
+
+  Ready to move to Phase 2 (documentation)?
+
+
+

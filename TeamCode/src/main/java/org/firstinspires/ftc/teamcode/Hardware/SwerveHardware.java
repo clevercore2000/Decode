@@ -35,8 +35,8 @@ public class SwerveHardware {
     private static final String BL_ENCODER = "bl_enc";
     private static final String BR_ENCODER = "br_enc";
 
-    // IMU (built into Control Hub) - Uncomment for field-centric drive
-    // private static final String IMU_NAME = "imu";
+    // IMU (built into Control Hub)
+    private static final String IMU_NAME = "imu";
 
     // ========== HARDWARE DEVICES ==========
 
@@ -58,8 +58,8 @@ public class SwerveHardware {
     public final AnalogInput blEncoder;
     public final AnalogInput brEncoder;
 
-    // IMU - Uncomment for field-centric drive
-    // public final IMU imu;
+    // IMU
+    public final IMU imu;
 
     public SwerveHardware(HardwareMap hardwareMap) {
         // Initialize drive motors
@@ -80,18 +80,18 @@ public class SwerveHardware {
         blEncoder = hardwareMap.get(AnalogInput.class, BL_ENCODER);
         brEncoder = hardwareMap.get(AnalogInput.class, BR_ENCODER);
 
-        // Initialize IMU - Uncomment for field-centric drive
-        /*
+        // Initialize IMU
         imu = hardwareMap.get(IMU.class, IMU_NAME);
 
-        // Configure IMU orientation (adjust for Control Hub mounting)
+        // Configure IMU orientation for side-mounted Control Hub
+        // Hub mounted at 90°: USB ports facing BACKWARD, Logo facing LEFT
+        // If field-centric directions are wrong, try LogoFacingDirection.RIGHT instead
         IMU.Parameters imuParameters = new IMU.Parameters(
             new RevHubOrientationOnRobot(
-                RevHubOrientationOnRobot.LogoFacingDirection.UP,
-                RevHubOrientationOnRobot.UsbFacingDirection.FORWARD
+                RevHubOrientationOnRobot.LogoFacingDirection.LEFT,     // Logo facing left side
+                RevHubOrientationOnRobot.UsbFacingDirection.BACKWARD   // USB ports toward back
             )
         );
         imu.initialize(imuParameters);
-        */
     }
 }
