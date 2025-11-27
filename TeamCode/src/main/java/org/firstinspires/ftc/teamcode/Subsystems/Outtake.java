@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.Subsystems;
 
+import com.arcrobotics.ftclib.controller.PIDFController;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.HardwareMap;
@@ -18,8 +19,8 @@ public class Outtake {
     private Hardware hardware;
     private DcMotorEx motor1;
     private DcMotorEx motor2;
-    private PIDController pidController1;
-    private PIDController pidController2;
+    private PIDFController pidController1;
+    private PIDFController pidController2;
 
     private ServoCfg ramp;
 
@@ -50,16 +51,18 @@ public class Outtake {
         ramp.setRange(OuttakeConstants.RAMP_MIN, OuttakeConstants.RAMP_MAX);
         ramp.moveTo(OuttakeConstants.RAMP_IDLE);  // Initialize to IDLE position
 
-        this.pidController1 = new PIDController(
+        this.pidController1 = new PIDFController(
             OuttakeConstants.VELOCITY_P,
             OuttakeConstants.VELOCITY_I,
-            OuttakeConstants.VELOCITY_D
+            OuttakeConstants.VELOCITY_D,
+            0  // F term (feedforward handled separately)
         );
 
-        this.pidController2 = new PIDController(
+        this.pidController2 = new PIDFController(
             OuttakeConstants.VELOCITY_P,
             OuttakeConstants.VELOCITY_I,
-            OuttakeConstants.VELOCITY_D
+            OuttakeConstants.VELOCITY_D,
+            0  // F term (feedforward handled separately)
         );
     }
 

@@ -12,7 +12,10 @@ public class SteeringConstants {
     // ========== AXON MINI SERVO CONFIGURATION ==========
     /**
      * Maximum analog voltage from Axon encoder
-     * Standard analog range is 0-3.3V
+     * St
+     *
+     *
+     * andard analog range is 0-3.3V
      *
      * NOTE: Encoder reads wheel angle DIRECTLY (not servo angle)
      * 0-3.3V = 0-360° wheel rotation (encoder is after 2:1 gear reduction)
@@ -21,12 +24,12 @@ public class SteeringConstants {
     public static final double ANALOG_VOLTAGE_MAX = 3.3;
 
     // ========== MODULE ANGLE OFFSETS ==========
-    // IMPORTANT: These offsets are INVALID after fixing gear ratio bug!
-    // Run SwerveCalibration OpMode to get new values
-    public static double FL_ANGLE_OFFSET = -2.24;  // TODO: Recalibrate
-    public static double FR_ANGLE_OFFSET = 2.83;  // TODO: Recalibrate
-    public static double BL_ANGLE_OFFSET = 2.4;  // TODO: Recalibrate
-    public static double BR_ANGLE_OFFSET = 2.01;  // TODO: Recalibrate
+    // CRITICAL: Run SwerveCalibration OpMode to get real values!
+    // Point all wheels FORWARD, then record the displayed angles
+    public static double FL_ANGLE_OFFSET = 4.0117;  // TODO: Run calibration
+    public static double FR_ANGLE_OFFSET = 3.7680;  // TODO: Run calibration
+    public static double BL_ANGLE_OFFSET = 5.1065;  // TODO: Run calibration
+    public static double BR_ANGLE_OFFSET = 1.3061;  // TODO: Run calibration
 
     // ========== STEERING CONTROL CONSTANTS ==========
     // PID gains for steering (based on proven KookyBotz implementation)

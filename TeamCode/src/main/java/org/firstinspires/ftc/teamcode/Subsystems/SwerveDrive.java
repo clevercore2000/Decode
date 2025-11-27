@@ -1,226 +1,190 @@
 package org.firstinspires.ftc.teamcode.Subsystems;
 
-import com.arcrobotics.ftclib.geometry.Rotation2d;
-import com.arcrobotics.ftclib.kinematics.wpilibkinematics.ChassisSpeeds;
-import com.arcrobotics.ftclib.kinematics.wpilibkinematics.SwerveDriveKinematics;
-import com.arcrobotics.ftclib.kinematics.wpilibkinematics.SwerveModuleState;
-import com.qualcomm.robotcore.hardware.IMU;
-
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.Constants.DriveConstants;
 import org.firstinspires.ftc.teamcode.Constants.SteeringConstants;
 import org.firstinspires.ftc.teamcode.Hardware.SwerveHardware;
 
 /**
- * Swerve Drive Subsystem
+ * Swerve Drive Coordinator
  *
- * Manages 4-module swerve drive using FTCLib WPILib kinematics
- * Converts chassis velocities (forward, strafe, rotation) to individual module states
+ * Coordinates 4 swerve modules using custom inverse kinematics.
+ * Based on PowerPlay's proven approach - simpler than FTCLib.
  *
- * Architecture:
- * - Each SwerveModule uses PID control for steering (P=0.6, D=0.1)
- * - FTCLib handles inverse kinematics (ChassisSpeeds → SwerveModuleStates)
- * - Module ordering: Front-Left, Front-Right, Back-Left, Back-Right (CRITICAL!)
+ * Kinematics Formula (Robot-Centric):
+ * For chassis velocity (vx, vy, omega) and module at position (x, y):
+ *   moduleSpeed = √(vx_module² + vy_module²)
+ *   moduleAngle = atan2(vy_module, vx_module)
+ *
+ * Where:
+ *   a = vx - omega × (WHEELBASE / R)
+ *   b = vx + omega × (WHEELBASE / R)
+ *   c = vy - omega × (TRACK_WIDTH / R)
+ *   d = vy + omega × (TRACK_WIDTH / R)
+ *   R = distance from robot center to module
+ *
+ * Module mapping:
+ *   FL: (b, c)  →  speed=√(b²+c²), angle=atan2(c, b)
+ *   FR: (b, d)  →  speed=√(b²+d²), angle=atan2(d, b)
+ *   BL: (a, c)  →  speed=√(a²+c²), angle=atan2(c, a)
+ *   BR: (a, d)  →  speed=√(a²+d²), angle=atan2(d, a)
  */
 public class SwerveDrive {
 
-    private final SwerveModule frontLeft;
-    private final SwerveModule frontRight;
-    private final SwerveModule backLeft;
-    private final SwerveModule backRight;
-    private final SwerveDriveKinematics kinematics;
+    // Swerve modules (FL, FR, BL, BR standard order)
+    private final SwerveModule flModule;
+    private final SwerveModule frModule;
+    private final SwerveModule blModule;
+    private final SwerveModule brModule;
 
-    // Field-centric drive (requires IMU)
-    private final IMU imu;
+    // Kinematics constant: distance from robot center to module
+    private final double R;
 
-    public SwerveDrive(SwerveHardware swerveHardware) {
-        // Field-centric drive
-        imu = swerveHardware.imu;
+    /**
+     * Create swerve drive system
+     *
+     * @param hardware Hardware abstraction containing motors, servos, encoders
+     */
+    public SwerveDrive(SwerveHardware hardware) {
+        // Calculate R = distance from center to module
+        // For square robot: R = √(wheelbase² + trackWidth²) / 2
+        R = Math.sqrt(
+            Math.pow(DriveConstants.WHEELBASE_METERS, 2) +
+            Math.pow(DriveConstants.TRACK_WIDTH_METERS, 2)
+        ) / 2;
 
-        // Initialize modules (FL, FR, BL, BR order is important - matches kinematics)
-        frontLeft = new SwerveModule(
-            swerveHardware.flDrive,
-            swerveHardware.flSteer,
-            swerveHardware.flEncoder,
+        // Initialize all 4 modules (order: FL, FR, BL, BR - standard!)
+        flModule = new SwerveModule(
+            hardware.flDrive,
+            hardware.flSteer,
+            hardware.flEncoder,
             SteeringConstants.FL_ANGLE_OFFSET,
-            false,  // driveInverted - adjust if motors run backwards
-            false,  // steerInverted
+            false,  // drive not inverted
+            false,  // steer not inverted
             "FL"
         );
 
-        frontRight = new SwerveModule(
-            swerveHardware.frDrive,
-            swerveHardware.frSteer,
-            swerveHardware.frEncoder,
+        frModule = new SwerveModule(
+            hardware.frDrive,
+            hardware.frSteer,
+            hardware.frEncoder,
             SteeringConstants.FR_ANGLE_OFFSET,
-            false,
-            false,
+            true,   // drive inverted (right side)
+            false,  // steer not inverted
             "FR"
         );
 
-        backLeft = new SwerveModule(
-            swerveHardware.blDrive,
-            swerveHardware.blSteer,
-            swerveHardware.blEncoder,
+        blModule = new SwerveModule(
+            hardware.blDrive,
+            hardware.blSteer,
+            hardware.blEncoder,
             SteeringConstants.BL_ANGLE_OFFSET,
-            false,
-            false,
+            false,  // drive not inverted
+            false,  // steer not inverted
             "BL"
         );
 
-        backRight = new SwerveModule(
-            swerveHardware.brDrive,
-            swerveHardware.brSteer,
-            swerveHardware.brEncoder,
+        brModule = new SwerveModule(
+            hardware.brDrive,
+            hardware.brSteer,
+            hardware.brEncoder,
             SteeringConstants.BR_ANGLE_OFFSET,
-            false,
-            false,
+            true,   // drive inverted (right side)
+            false,  // steer not inverted
             "BR"
         );
-
-        // Initialize kinematics with module positions
-        kinematics = new SwerveDriveKinematics(
-            DriveConstants.FL_POSITION,
-            DriveConstants.FR_POSITION,
-            DriveConstants.BL_POSITION,
-            DriveConstants.BR_POSITION
-        );
     }
 
     /**
-     * Drive the robot with given velocities.
+     * Drive the robot (robot-centric)
      *
-     * This method performs the complete swerve drive control pipeline:
-     * 1. Transforms velocities (field-centric → robot-centric if needed)
-     * 2. Inverse kinematics (chassis velocity → module states)
-     * 3. Speed normalization (ensures achievable speeds)
-     * 4. Distributes commands to all 4 modules
+     * Coordinate system (WPILib standard):
+     *   +vx = forward (toward front of robot)
+     *   +vy = left (toward left side of robot) ← NOT right!
+     *   +omega = counter-clockwise rotation
      *
-     * @param xSpeed Forward velocity in m/s (positive = forward, negative = backward)
-     * @param ySpeed Strafe velocity in m/s (positive = left, negative = right)
-     * @param rotSpeed Rotation velocity in rad/s (positive = CCW, negative = CW)
-     * @param fieldRelative If true, velocities relative to field (requires IMU).
-     *                      If false, velocities relative to robot orientation.
-     *
-     * Example:
-     * <pre>
-     *   drive(1.0, 0.5, 0.0, true);  // Move forward-left relative to field
-     *   drive(0.0, 0.0, Math.PI, false);  // Rotate in place (robot-centric)
-     * </pre>
+     * @param vx     Forward velocity in m/s (positive = forward)
+     * @param vy     Strafe velocity in m/s (positive = left)
+     * @param omega  Rotation velocity in rad/s (positive = counter-clockwise)
      */
-    public void drive(double xSpeed, double ySpeed, double rotSpeed, boolean fieldRelative) {
-        ChassisSpeeds chassisSpeeds;
+    public void drive(double vx, double vy, double omega) {
+        // Custom inverse kinematics (PowerPlay approach)
+        double a = vx - omega * (DriveConstants.WHEELBASE_METERS / R);
+        double b = vx + omega * (DriveConstants.WHEELBASE_METERS / R);
+        double c = vy - omega * (DriveConstants.TRACK_WIDTH_METERS / R);
+        double d = vy + omega * (DriveConstants.TRACK_WIDTH_METERS / R);
 
-        if (fieldRelative) {
-            chassisSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(
-                xSpeed, ySpeed, rotSpeed, getGyroAngle()
-            );
-        } else {
-            chassisSpeeds = new ChassisSpeeds(xSpeed, ySpeed, rotSpeed);
-        }
+        // Calculate module speeds and angles
+        double[] speeds = new double[4];
+        double[] angles = new double[4];
 
-        // Convert chassis speeds to individual module states
-        SwerveModuleState[] moduleStates = kinematics.toSwerveModuleStates(chassisSpeeds);
+        speeds[0] = Math.hypot(b, c);  // FL
+        angles[0] = Math.atan2(c, b);
 
-        // Normalize speeds if any exceed max (preserves motion ratios)
-        SwerveDriveKinematics.normalizeWheelSpeeds(
-            moduleStates,
-            DriveConstants.MAX_SPEED_METERS_PER_SECOND
+        speeds[1] = Math.hypot(b, d);  // FR
+        angles[1] = Math.atan2(d, b);
+
+        speeds[2] = Math.hypot(a, c);  // BL
+        angles[2] = Math.atan2(c, a);
+
+        speeds[3] = Math.hypot(a, d);  // BR
+        angles[3] = Math.atan2(d, a);
+
+        // Normalize speeds if any exceed 1.0 (preserves motion direction)
+        double maxSpeed = Math.max(
+            Math.max(speeds[0], speeds[1]),
+            Math.max(speeds[2], speeds[3])
         );
 
-        // Send states to modules
-        setModuleStates(moduleStates);
-    }
-
-    /****
-     * Set desired states for all modules
-     * Order must match kinematics: FL, FR, BL, BR
-     */
-    public void setModuleStates(SwerveModuleState[] desiredStates) {
-        if (desiredStates.length != 4) {
-            throw new IllegalArgumentException("Must provide exactly 4 module states");
+        if (maxSpeed > 1.0) {
+            for (int i = 0; i < 4; i++) {
+                speeds[i] /= maxSpeed;
+            }
         }
 
-        frontLeft.setDesiredState(desiredStates[0]);
-        frontRight.setDesiredState(desiredStates[1]);
-        backLeft.setDesiredState(desiredStates[2]);
-        backRight.setDesiredState(desiredStates[3]);
+        // Apply states to modules
+        flModule.setDesiredState(speeds[0], angles[0]);
+        frModule.setDesiredState(speeds[1], angles[1]);
+        blModule.setDesiredState(speeds[2], angles[2]);
+        brModule.setDesiredState(speeds[3], angles[3]);
     }
 
     /**
-     * Get current states of all modules (for odometry/telemetry)
-     * Returns in order: FL, FR, BL, BR
-     */
-    public SwerveModuleState[] getModuleStates() {
-        return new SwerveModuleState[] {
-            frontLeft.getState(),
-            frontRight.getState(),
-            backLeft.getState(),
-            backRight.getState()
-        };
-    }
-
-    /**
-     * Stop all modules (zero power)
+     * Stop all modules
+     *
+     * CRITICAL: Uses SwerveModule.stop() which maintains encoder power
      */
     public void stop() {
-        frontLeft.stop();
-        frontRight.stop();
-        backLeft.stop();
-        backRight.stop();
+        flModule.stop();
+        frModule.stop();
+        blModule.stop();
+        brModule.stop();
     }
 
     /**
-     * Reset all drive encoders to zero
+     * Get FL module (for telemetry/debugging)
      */
-    public void resetDriveEncoders() {
-        frontLeft.resetDriveEncoder();
-        frontRight.resetDriveEncoder();
-        backLeft.resetDriveEncoder();
-        backRight.resetDriveEncoder();
+    public SwerveModule getFlModule() {
+        return flModule;
     }
 
     /**
-     * Get a specific module by index (0=FL, 1=FR, 2=BL, 3=BR)
+     * Get FR module (for telemetry/debugging)
      */
-    public SwerveModule getModule(int index) {
-        switch (index) {
-            case 0: return frontLeft;
-            case 1: return frontRight;
-            case 2: return backLeft;
-            case 3: return backRight;
-            default: throw new IllegalArgumentException("Invalid module index: " + index);
-        }
+    public SwerveModule getFrModule() {
+        return frModule;
     }
 
     /**
-     * Reset IMU heading to zero
+     * Get BL module (for telemetry/debugging)
      */
-    public void zeroHeading() {
-        imu.resetYaw();
+    public SwerveModule getBlModule() {
+        return blModule;
     }
 
     /**
-     * Get current IMU heading in degrees (for telemetry)
+     * Get BR module (for telemetry/debugging)
      */
-    public double getHeadingDegrees() {
-        return getGyroAngle().getDegrees();
+    public SwerveModule getBrModule() {
+        return brModule;
     }
-
-    /**
-     * Get current robot heading as Rotation2d
-     */
-    private Rotation2d getGyroAngle() {
-        return Rotation2d.fromDegrees(
-            imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES)
-        );
-    }
-
-    // For odometry - update robot pose based on module states (not needed for basic teleop)
-    /*
-    public void updateOdometry() {
-        // Implementation depends on odometry class setup
-        // See FTCLib SwerveDriveOdometry documentation
-    }
-    */
 }

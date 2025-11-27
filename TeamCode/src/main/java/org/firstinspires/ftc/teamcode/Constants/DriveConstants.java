@@ -1,7 +1,6 @@
 package org.firstinspires.ftc.teamcode.Constants;
 
 import com.acmerobotics.dashboard.config.Config;
-import com.arcrobotics.ftclib.geometry.Translation2d;
 
 /**
  * Drive System Constants
@@ -17,16 +16,6 @@ public class DriveConstants {
     // IMPORTANT: For square robot, these MUST be equal!
     public static double WHEELBASE_METERS = 0.385;
     public static double TRACK_WIDTH_METERS = 0.385;  // Same as wheelbase (square config)
-
-    // Module positions relative to robot center (+X forward, +Y left)
-    public static final Translation2d FL_POSITION =
-        new Translation2d(WHEELBASE_METERS/2, TRACK_WIDTH_METERS/2);
-    public static final Translation2d FR_POSITION =
-        new Translation2d(WHEELBASE_METERS/2, -TRACK_WIDTH_METERS/2);
-    public static final Translation2d BL_POSITION =
-        new Translation2d(-WHEELBASE_METERS/2, TRACK_WIDTH_METERS/2);
-    public static final Translation2d BR_POSITION =
-        new Translation2d(-WHEELBASE_METERS/2, -TRACK_WIDTH_METERS/2);
 
     // ========== DRIVE MOTOR CONFIGURATION ==========
     public static double WHEEL_DIAMETER_METERS = 0.0762;  // Wheel diameter
@@ -50,13 +39,13 @@ public class DriveConstants {
 
     // ========== DRIVE CONTROL ==========
     /**
-     * Drive motor control uses simple feedforward (no PID)
-     * motorPower = targetSpeed / MAX_SPEED_METERS_PER_SECOND
+     * Drive motor control uses simple feedforward (no velocity PID)
+     * motorPower = targetSpeed (already normalized by kinematics)
      *
-     * This simple approach works because:
-     * - No fighting with external PID
-     * - Motors naturally reach commanded speed
-     * - FTCLib kinematics handles the complex math
+     * This works because:
+     * - Motors naturally reach commanded speed at given power
+     * - Custom kinematics handles speed normalization
+     * - Simple and reliable for teleop
      */
 
     // ========== CONFIGURATION VALIDATION ==========

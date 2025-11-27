@@ -1,6 +1,5 @@
 package org.firstinspires.ftc.teamcode.Opmodes;
 
-import com.arcrobotics.ftclib.kinematics.wpilibkinematics.SwerveModuleState;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
@@ -12,7 +11,10 @@ import org.firstinspires.ftc.teamcode.Subsystems.Intake;
 import org.firstinspires.ftc.teamcode.Subsystems.Outtake;
 
 /**
- * Swerve Drive TeleOp
+ * Simple Swerve Drive TeleOp
+ *
+ * Robot-centric control only (no field-centric).
+ * Just the basics - drive and game mechanisms.
  *
  * Controls:
  * - Left Stick: Forward/Backward/Strafe
@@ -24,45 +26,50 @@ import org.firstinspires.ftc.teamcode.Subsystems.Outtake;
 public class SwerveTeleop extends LinearOpMode {
 
     private Hardware hardware;
-
     private Outtake outtake;
-
     private Intake intake;
-
-    // Field-centric drive control
-    private boolean fieldCentric = true;  // Start in field-centric mode
-    private boolean lastFieldCentricButton = false;
 
     @Override
     public void runOpMode() {
+        // Initialize hardware
         hardware = new Hardware(hardwareMap);
         outtake = new Outtake(hardware);
         intake = new Intake(hardware);
-        telemetry.addData("Status", "Initialized");
-        telemetry.addData("Mode", "Field-Centric (Options to toggle)");
-        telemetry.addData("Controls", "Start = Zero Heading");
+
+        telemetry.addLine("=========================");
+        telemetry.addLine("  SWERVE DRIVE READY");
+        telemetry.addLine("=========================");
+        telemetry.addLine();
+        telemetry.addLine("Mode: Robot-Centric");
+        telemetry.addLine();
+        telemetry.addLine("Left Stick: Drive");
+        telemetry.addLine("Right Stick X: Rotate");
+        telemetry.addLine();
+        telemetry.addLine("Press START when ready");
         telemetry.update();
 
         waitForStart();
 
         while (opModeIsActive()) {
-            // ========== READ INPUTS ==========
+            // ========== READ DRIVE INPUTS ==========
             // Coordinate system: +X=forward, +Y=left, +rotation=CCW
             // Gamepad: stick up=-Y, stick right=+X, right stick right=+X
             double forward = -gamepad1.left_stick_y;    // Stick up → +X (forward)
-            double strafe = -gamepad1.left_stick_x;     // Stick right → -Y (right)  [FIXED]
-            double rotation = -gamepad1.right_stick_x;  // Stick right → -rotation (CW)  [FIXED]
+            double strafe = -gamepad1.left_stick_x;     // Stick right → -Y (right)
+            double rotation = -gamepad1.right_stick_x;  // Stick right → -rotation (CW)
 
+            // Apply deadband (prevents drift)
             forward = applyDeadband(forward, ControlConstants.JOYSTICK_DEADBAND);
             strafe = applyDeadband(strafe, ControlConstants.JOYSTICK_DEADBAND);
             rotation = applyDeadband(rotation, ControlConstants.JOYSTICK_DEADBAND);
 
+            // Scale to max velocities
             forward *= DriveConstants.MAX_SPEED_METERS_PER_SECOND;
             strafe *= DriveConstants.MAX_SPEED_METERS_PER_SECOND;
             rotation *= DriveConstants.MAX_ANGULAR_VELOCITY;
 
-            // ========== SUBSYSTEM CONTROLS ==========
-            //TODO this is only for testing, proper controls need to be decided upon by the driving team
+            // ========== GAME MECHANISM CONTROLS ==========
+            // Outtake control (Cross button)
             if (gamepad1.cross) {
                 if (gamepad1.left_bumper) {
                     outtake.setTargetRPM(1500);
@@ -75,42 +82,37 @@ public class SwerveTeleop extends LinearOpMode {
                 outtake.stop();
             }
 
-            // Call rampShoot BEFORE update so state machine runs before execute()
+            // Call rampShoot BEFORE update
             outtake.rampShoot(gamepad1.triangle);
-
             outtake.update();
 
+            // Intake control (Square button)
             if (gamepad1.square) {
                 intake.Start(0.9);
             } else {
                 intake.Stop();
             }
 
-            // ========== FIELD-CENTRIC CONTROLS ==========
-            // Options button toggles field-centric mode
-            boolean currentFieldCentricButton = gamepad1.options;
-            if (currentFieldCentricButton && !lastFieldCentricButton) {
-                fieldCentric = !fieldCentric;
-            }
-            lastFieldCentricButton = currentFieldCentricButton;
-
-            // Start button resets heading (zero gyro)
-            if (gamepad1.start) {
-                hardware.swerveDrive.zeroHeading();
-            }
-
             // ========== DRIVE CONTROL ==========
-           hardware.swerveDrive.drive(forward, strafe, rotation, fieldCentric);
+            hardware.swerveDrive.drive(forward, strafe, rotation);
 
             // ========== TELEMETRY ==========
             updateTelemetry(forward, strafe, rotation);
         }
 
+        // Stop everything when exiting
         hardware.swerveDrive.stop();
         intake.Stop();
         outtake.stop();
     }
 
+    /**
+     * Apply deadband to joystick input
+     *
+     * @param value    Joystick value [-1.0, 1.0]
+     * @param deadband Deadband threshold (e.g., 0.05)
+     * @return Filtered value (0.0 if within deadband)
+     */
     private double applyDeadband(double value, double deadband) {
         if (Math.abs(value) < deadband) {
             return 0.0;
@@ -118,34 +120,46 @@ public class SwerveTeleop extends LinearOpMode {
         return value;
     }
 
+    /**
+     * Update telemetry display
+     *
+     * Shows drive inputs and module states
+     */
     private void updateTelemetry(double forward, double strafe, double rotation) {
-        // Get module states
-        SwerveModuleState[] moduleStates = hardware.swerveDrive.getModuleStates();
-
-        // === SWERVE DRIVE STATUS ===
         telemetry.addLine("=== SWERVE DRIVE ===");
-        telemetry.addData("Mode", fieldCentric ? "Field-Centric" : "Robot-Centric");
-        telemetry.addData("Heading", "%.1f°", hardware.swerveDrive.getHeadingDegrees());
-        telemetry.addData("Input", "F:%.2f S:%.2f R:%.2f", forward, strafe, rotation);
-
-        // Module states (compact 1-line format)
-        telemetry.addData("FL", "%.1f m/s @ %.0f°", moduleStates[0].speedMetersPerSecond, moduleStates[0].angle.getDegrees());
-        telemetry.addData("FR", "%.1f m/s @ %.0f°", moduleStates[1].speedMetersPerSecond, moduleStates[1].angle.getDegrees());
-        telemetry.addData("BL", "%.1f m/s @ %.0f°", moduleStates[2].speedMetersPerSecond, moduleStates[2].angle.getDegrees());
-        telemetry.addData("BR", "%.1f m/s @ %.0f°", moduleStates[3].speedMetersPerSecond, moduleStates[3].angle.getDegrees());
+        telemetry.addData("Mode", "Robot-Centric");
+        telemetry.addData("Forward", "%.2f m/s", forward);
+        telemetry.addData("Strafe", "%.2f m/s", strafe);
+        telemetry.addData("Rotation", "%.2f rad/s", rotation);
         telemetry.addLine();
 
-        // === GAME MECHANISMS (COMPACT) ===
-        // Outtake status
+        // Module telemetry
+        telemetry.addLine("=== MODULES ===");
+        telemetry.addData("FL", "%.1f° (%.3fV)",
+            Math.toDegrees(hardware.swerveDrive.getFlModule().getCurrentSteeringAngle()),
+            hardware.swerveDrive.getFlModule().getRawEncoderVoltage()
+        );
+        telemetry.addData("FR", "%.1f° (%.3fV)",
+            Math.toDegrees(hardware.swerveDrive.getFrModule().getCurrentSteeringAngle()),
+            hardware.swerveDrive.getFrModule().getRawEncoderVoltage()
+        );
+        telemetry.addData("BL", "%.1f° (%.3fV)",
+            Math.toDegrees(hardware.swerveDrive.getBlModule().getCurrentSteeringAngle()),
+            hardware.swerveDrive.getBlModule().getRawEncoderVoltage()
+        );
+        telemetry.addData("BR", "%.1f° (%.3fV)",
+            Math.toDegrees(hardware.swerveDrive.getBrModule().getCurrentSteeringAngle()),
+            hardware.swerveDrive.getBrModule().getRawEncoderVoltage()
+        );
+        telemetry.addLine();
+
+        // Game mechanisms
         String outtakeStatus = outtake.isActive() ?
             String.format("ON @ %.0f RPM (Avg: %.0f)", outtake.getTargetRPM(), outtake.getAverageRPM()) :
             "OFF";
         telemetry.addData("Outtake", outtakeStatus);
-
-        // Intake status
         telemetry.addData("Intake", gamepad1.square ? "RUNNING" : "OFF");
 
         telemetry.update();
     }
-
 }
