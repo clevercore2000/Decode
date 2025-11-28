@@ -22,7 +22,7 @@ public class SteeringConstants {
     public static final double BR_VOLTAGE_OFFSET = 1.6;
 
     // === PID GAINS (Phase 1: P-only, tune via FTC Dashboard) ===
-    public static double STEER_P = 0.6;   // Proportional gain - start here, tune live
+    public static double STEER_P = 0.4;   // Proportional gain - start here, tune live
     public static double STEER_I = 0.0;   // Integral - keep disabled for position control
     public static double STEER_D = 0.0;   // Derivative - add in Phase 2 if needed
 
@@ -32,5 +32,5 @@ public class SteeringConstants {
     public static double STATIC_FRICTION_COMPENSATION = 0.03; // Boost to overcome servo stiction
 
     // === FILTERING (Phase 3: Add if needed) ===
-    public static double ENCODER_FILTER_ALPHA = 0.0;  // 0.0 = no filtering, 0.7-0.95 = EMA filtering
+    public static double ENCODER_FILTER_ALPHA = 0;  // 0.0 = no filtering, 0.7-0.95 = EMA filtering
 }

@@ -51,29 +51,27 @@ public class SwerveModule {
     }
 
     public void setDesiredState(SwerveModuleState desiredState) {
-        // CRITICAL FIX: Skip angle updates when velocity is zero
-        // Prevents atan2(0,0) singularity and maintains last angle when idle
-        if (Math.abs(desiredState.speedMetersPerSecond) < 0.001) {
-            // Idle mode: maintain current angle, stop drive motor
-            driveMotor.setPower(0.0);
-            // Keep servo electronics active for encoder reading
-            steerServo.setPower(SteeringConstants.MIN_SERVO_POWER);
-            this.desiredState = new SwerveModuleState(
-                    0.0,
-                    new Rotation2d(getSteeringAngle())  // Maintain current angle
+        setDesiredState(desiredState, true); // Default to optimizing
+    }
+
+    public void setDesiredState(SwerveModuleState desiredState, boolean optimize) {
+        // CRITICAL: Only optimize when actually moving
+        // Optimizing zero-velocity commands causes modules to flip 180° for no reason
+        SwerveModuleState stateToSet;
+        if (optimize && Math.abs(desiredState.speedMetersPerSecond) > 0.001) {
+            stateToSet = SwerveModuleState.optimize(
+                    desiredState,
+                    new Rotation2d(getSteeringAngle())
             );
-            return;  // Exit early, don't update angle
+        } else {
+            // Zero velocity or optimization disabled: use desired state as-is
+            stateToSet = desiredState;
         }
 
-        SwerveModuleState optimized = SwerveModuleState.optimize(
-                desiredState,
-                new Rotation2d(getSteeringAngle())
-        );
-
-        this.desiredState = optimized;
+        this.desiredState = stateToSet;
 
         double current = getSteeringAngle();
-        double target = optimized.angle.getRadians();
+        double target = stateToSet.angle.getRadians();
         double error = MathUtils.normalizeAngleRadians(target - current);
 
         double steerPower;
@@ -91,7 +89,7 @@ public class SwerveModule {
 
         steerServo.setPower(steerInverted ? -steerPower : steerPower);
 
-        double drivePower = optimized.speedMetersPerSecond * DriveConstants.DRIVE_FF;
+        double drivePower = stateToSet.speedMetersPerSecond * DriveConstants.DRIVE_FF;
         drivePower = Math.max(-1.0, Math.min(1.0, drivePower));
         driveMotor.setPower(drivePower);
     }
@@ -100,23 +98,14 @@ public class SwerveModule {
         return new SwerveModuleState(0.0, new Rotation2d(getSteeringAngle()));
     }
 
-    public void stop() {
+    public void hold() {
         driveMotor.setPower(0.0);
         steerServo.setPower(SteeringConstants.MIN_SERVO_POWER);
     }
 
     public void addTelemetry(Telemetry telemetry) {
-        telemetry.addLine("--- " + moduleName + " ---");
-
         double current = getSteeringAngle();
         double target = desiredState.angle.getRadians();
-        double error = MathUtils.normalizeAngleRadians(target - current);
-
-        telemetry.addData("Raw Voltage", "%.3f V", encoder.getRawVoltage());
-        telemetry.addData("Current Angle", "%.1f°", Math.toDegrees(current));
-        telemetry.addData("Target Angle", "%.1f°", Math.toDegrees(target));
-        telemetry.addData("Error", "%.1f°", Math.toDegrees(error));
-        telemetry.addData("Steer Power", "%.3f", steerServo.getPower());
-        telemetry.addData("Drive Power", "%.3f", driveMotor.getPower());
+        telemetry.addData(moduleName, "%.0f° → %.0f°", Math.toDegrees(current), Math.toDegrees(target));
     }
 }

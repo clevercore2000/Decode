@@ -105,9 +105,10 @@ public class SwerveModuleTest extends LinearOpMode {
             telemetry.update();
         }
 
-        fl.stop();
-        fr.stop();
-        bl.stop();
-        br.stop();
+        // No need for hold() - modules will naturally maintain angle via PID
+        // fl.hold();
+        // fr.hold();
+        // bl.hold();
+        // br.hold();
     }
 }

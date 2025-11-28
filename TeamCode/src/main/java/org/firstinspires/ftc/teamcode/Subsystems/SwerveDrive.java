@@ -31,7 +31,7 @@ public class SwerveDrive {
                 hardwareMap.get(DcMotorEx.class, "fl"),
                 hardwareMap.get(CRServo.class, "fl_servo"),
                 new AxonEncoder(hardwareMap.get(AnalogInput.class, "fl_enc"), SteeringConstants.FL_VOLTAGE_OFFSET),
-                false, true, "FL"  // Drive NOT inverted - all motors same direction
+                true, true, "FL"  // Drive NOT inverted - all motors same direction
         );
 
         fr = new SwerveModule(
@@ -57,6 +57,10 @@ public class SwerveDrive {
     }
 
     public void drive(double xSpeed, double ySpeed, double rotSpeed) {
+        drive(xSpeed, ySpeed, rotSpeed, true); // Default to optimizing
+    }
+
+    public void drive(double xSpeed, double ySpeed, double rotSpeed, boolean optimize) {
         // Robot-centric control only
         ChassisSpeeds chassisSpeeds = new ChassisSpeeds(xSpeed, ySpeed, rotSpeed);
 
@@ -64,21 +68,20 @@ public class SwerveDrive {
 
         SwerveDriveKinematics.normalizeWheelSpeeds(moduleStates, DriveConstants.MAX_SPEED_METERS_PER_SECOND);
 
-        fl.setDesiredState(moduleStates[0]);
-        fr.setDesiredState(moduleStates[1]);
-        bl.setDesiredState(moduleStates[2]);
-        br.setDesiredState(moduleStates[3]);
+        fl.setDesiredState(moduleStates[0], optimize);
+        fr.setDesiredState(moduleStates[1], optimize);
+        bl.setDesiredState(moduleStates[2], optimize);
+        br.setDesiredState(moduleStates[3], optimize);
     }
 
-    public void stop() {
-        fl.stop();
-        fr.stop();
-        bl.stop();
-        br.stop();
+    public void hold() {
+        fl.hold();
+        fr.hold();
+        bl.hold();
+        br.hold();
     }
 
     public void addTelemetry(Telemetry telemetry) {
-        telemetry.addLine("=== SWERVE MODULES ===");
         fl.addTelemetry(telemetry);
         fr.addTelemetry(telemetry);
         bl.addTelemetry(telemetry);

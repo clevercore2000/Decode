@@ -27,7 +27,7 @@ public class SwerveTeleop extends LinearOpMode {
             double strafe = -gamepad1.left_stick_x;       // Invert: stick right = -Y (since +Y = left)
             double rotation = -gamepad1.right_stick_x;    // Invert: stick right = -rotation (CW)
 
-            // Apply deadband
+            // Apply deadband to individual axes
             if (Math.abs(forward) < ControlConstants.JOYSTICK_DEADBAND) forward = 0;
             if (Math.abs(strafe) < ControlConstants.JOYSTICK_DEADBAND) strafe = 0;
             if (Math.abs(rotation) < ControlConstants.JOYSTICK_DEADBAND) rotation = 0;
@@ -37,19 +37,15 @@ public class SwerveTeleop extends LinearOpMode {
             strafe *= ControlConstants.MAX_DRIVE_SPEED;
             rotation *= ControlConstants.MAX_ROTATION_SPEED;
 
-            // Drive (robot-centric)
-            drive.drive(forward, strafe, rotation);
+            boolean isRotating = Math.abs(rotation) > 0;
+            drive.drive(forward, strafe, rotation, !isRotating);
 
             // Telemetry
-            telemetry.addLine("=== INPUTS ===");
-            telemetry.addData("Forward", "%.2f m/s", forward);
-            telemetry.addData("Strafe", "%.2f m/s", strafe);
-            telemetry.addData("Rotation", "%.2f rad/s", rotation);
-            telemetry.addLine();
+            telemetry.addData("Fwd/Str/Rot", "%.1f / %.1f / %.1f", forward, strafe, rotation);
             drive.addTelemetry(telemetry);
             telemetry.update();
         }
 
-        drive.stop();
+        // No need for hold() - motors will naturally stop when opmode ends
     }
 }
