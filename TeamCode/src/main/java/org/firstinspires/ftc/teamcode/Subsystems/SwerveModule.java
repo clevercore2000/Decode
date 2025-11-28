@@ -2,222 +2,121 @@ package org.firstinspires.ftc.teamcode.Subsystems;
 
 import com.arcrobotics.ftclib.geometry.Rotation2d;
 import com.arcrobotics.ftclib.kinematics.wpilibkinematics.SwerveModuleState;
-import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
+import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.Constants.DriveConstants;
 import org.firstinspires.ftc.teamcode.Constants.SteeringConstants;
+import org.firstinspires.ftc.teamcode.Hardware.AxonEncoder;
+import org.firstinspires.ftc.teamcode.Utils.MathUtils;
 
-/**
- * Simple, proven swerve module implementation
- * Uses basic proportional control for steering - lets Axon internal PID do the work
- *
- * Key changes from complex version:
- * - NO external PID controller (Axon servo has internal PID)
- * - Simple proportional control: power = error × gain
- * - Minimal filtering to reduce lag
- * - Trust the hardware, keep software simple
- */
 public class SwerveModule {
-
-    // Hardware
     private final DcMotorEx driveMotor;
     private final CRServo steerServo;
-    private final AnalogInput steerEncoder;
-
-    // Configuration
-    private final double angleOffset;
+    private final AxonEncoder encoder;
     private final boolean steerInverted;
     private final String moduleName;
 
-    // Minimal filtering for encoder noise
-    private double filteredAngle = 0;
-
-    // State tracking
     private SwerveModuleState desiredState = new SwerveModuleState();
 
     public SwerveModule(
-        DcMotorEx driveMotor,
-        CRServo steerServo,
-        AnalogInput steerEncoder,
-        double angleOffset,
-        boolean driveInverted,
-        boolean steerInverted,
-        String moduleName
+            DcMotorEx driveMotor,
+            CRServo steerServo,
+            AxonEncoder encoder,
+            boolean driveInverted,
+            boolean steerInverted,
+            String moduleName
     ) {
         this.driveMotor = driveMotor;
         this.steerServo = steerServo;
-        this.steerEncoder = steerEncoder;
-        this.angleOffset = angleOffset;
+        this.encoder = encoder;
         this.steerInverted = steerInverted;
         this.moduleName = moduleName;
 
-        // Configure drive motor
-        this.driveMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        this.driveMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        this.driveMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        driveMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        driveMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        driveMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         if (driveInverted) {
-            this.driveMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+            driveMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         }
-
-        // Initialize filtered angle
-        this.filteredAngle = getSteeringAngle();
     }
 
-    /**
-     * Set the desired state for this module
-     * Uses simple proportional control - proven to work
-     */
+    public double getSteeringAngle() {
+        double angleRadians = encoder.getAngleRadians();
+        return MathUtils.normalizeAngleRadians(angleRadians);
+    }
+
     public void setDesiredState(SwerveModuleState desiredState) {
-        // Optimize state to avoid rotating more than 90 degrees
-        SwerveModuleState optimizedState = SwerveModuleState.optimize(
-            desiredState,
-            new Rotation2d(getSteeringAngle())
+        // CRITICAL FIX: Skip angle updates when velocity is zero
+        // Prevents atan2(0,0) singularity and maintains last angle when idle
+        if (Math.abs(desiredState.speedMetersPerSecond) < 0.001) {
+            // Idle mode: maintain current angle, stop drive motor
+            driveMotor.setPower(0.0);
+            // Keep servo electronics active for encoder reading
+            steerServo.setPower(SteeringConstants.MIN_SERVO_POWER);
+            this.desiredState = new SwerveModuleState(
+                    0.0,
+                    new Rotation2d(getSteeringAngle())  // Maintain current angle
+            );
+            return;  // Exit early, don't update angle
+        }
+
+        SwerveModuleState optimized = SwerveModuleState.optimize(
+                desiredState,
+                new Rotation2d(getSteeringAngle())
         );
 
-        this.desiredState = optimizedState;
+        this.desiredState = optimized;
 
-        // === STEERING CONTROL (SIMPLE PROPORTIONAL) ===
-        double currentAngle = getSteeringAngle();
-        double targetAngle = optimizedState.angle.getRadians();
+        double current = getSteeringAngle();
+        double target = optimized.angle.getRadians();
+        double error = MathUtils.normalizeAngleRadians(target - current);
 
-        // Calculate shortest angle error (wrap at 2π)
-        double angleError = normalizeAngle(targetAngle - currentAngle);
-
-        // Simple proportional control - let Axon servo internal PID do the heavy lifting
         double steerPower;
-        if (Math.abs(angleError) < SteeringConstants.STEERING_DEADBAND_RADIANS) {
-            // Within deadband - stop to prevent jitter
-            steerPower = 0.0;
+        if (Math.abs(error) < SteeringConstants.STEERING_DEADBAND_RADIANS) {
+            steerPower = SteeringConstants.MIN_SERVO_POWER;
         } else {
-            // Simple: power = error × gain
-            steerPower = angleError * SteeringConstants.STEER_KP;
-            // Clamp to valid servo range
+            steerPower = error * SteeringConstants.STEER_P;
+            steerPower += Math.signum(steerPower) * SteeringConstants.STATIC_FRICTION_COMPENSATION;
             steerPower = Math.max(-1.0, Math.min(1.0, steerPower));
+
+            if (Math.abs(steerPower) < SteeringConstants.MIN_SERVO_POWER) {
+                steerPower = Math.signum(error) * SteeringConstants.MIN_SERVO_POWER;
+            }
         }
 
         steerServo.setPower(steerInverted ? -steerPower : steerPower);
 
-        // === DRIVE CONTROL (SIMPLE FEEDFORWARD) ===
-        // Cosine compensation reduces skew during direction changes
-        // TEMPORARILY DISABLED for testing - re-enable after motors work
-        // double cosineScalar = Math.abs(Math.cos(angleError));
-        // double targetSpeed = optimizedState.speedMetersPerSecond * cosineScalar;
-        double targetSpeed = optimizedState.speedMetersPerSecond;
-
-        // Kinematics already normalizes speeds to max - just clamp to [-1, 1]
-        // NO additional division needed!
-        double drivePower = Math.max(-1.0, Math.min(1.0, targetSpeed));
-
+        double drivePower = optimized.speedMetersPerSecond * DriveConstants.DRIVE_FF;
+        drivePower = Math.max(-1.0, Math.min(1.0, drivePower));
         driveMotor.setPower(drivePower);
     }
 
-    /**
-     * Get the current state of the module
-     */
     public SwerveModuleState getState() {
-        return new SwerveModuleState(
-            getDriveVelocity(),
-            new Rotation2d(getSteeringAngle())
-        );
+        return new SwerveModuleState(0.0, new Rotation2d(getSteeringAngle()));
     }
 
-    /**
-     * Reset the drive encoder to zero
-     */
-    public void resetDriveEncoder() {
-        driveMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        driveMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-    }
-
-    /**
-     * Get the current steering angle in radians
-     * Minimal filtering to reduce lag
-     */
-    private double getSteeringAngle() {
-        // Read analog voltage (0-3.3V = 0-355° with ~5° dead zone)
-        double rawVoltage = steerEncoder.getVoltage();
-
-        // Convert voltage to angle (0-3.3V = 0-2π radians)
-        double rawAngle = (rawVoltage / SteeringConstants.ANALOG_VOLTAGE_MAX) * 2 * Math.PI;
-
-        // Minimal EMA filtering (95% new, 5% old) - barely any lag
-        filteredAngle = SteeringConstants.ENCODER_FILTER_ALPHA * rawAngle
-                      + (1 - SteeringConstants.ENCODER_FILTER_ALPHA) * filteredAngle;
-
-        // Apply calibration offset and normalize
-        double angle = filteredAngle - angleOffset;
-        return normalizeAngle(angle);
-    }
-
-    /**
-     * Get raw encoder voltage for debugging
-     */
-    public double getRawEncoderVoltage() {
-        return steerEncoder.getVoltage();
-    }
-
-    /**
-     * Get the drive velocity in meters per second
-     */
-    private double getDriveVelocity() {
-        // Get velocity in ticks per second
-        double velocityTicksPerSec = driveMotor.getVelocity();
-
-        // Convert to meters per second
-        return velocityTicksPerSec / DriveConstants.TICKS_PER_METER;
-    }
-
-    /**
-     * Normalize angle to [-π, π] range
-     */
-    private double normalizeAngle(double angle) {
-        while (angle > Math.PI) {
-            angle -= 2 * Math.PI;
-        }
-        while (angle < -Math.PI) {
-            angle += 2 * Math.PI;
-        }
-        return angle;
-    }
-
-    /**
-     * Get the module name for telemetry
-     */
-    public String getModuleName() {
-        return moduleName;
-    }
-
-    /**
-     * Get the desired state (for telemetry/debugging)
-     */
-    public SwerveModuleState getDesiredState() {
-        return desiredState;
-    }
-
-    /**
-     * Get current steering angle for telemetry
-     */
-    public double getCurrentSteeringAngle() {
-        return getSteeringAngle();
-    }
-
-    /**
-     * Get current drive motor power for debugging
-     */
-    public double getDrivePower() {
-        return driveMotor.getPower();
-    }
-
-    /**
-     * Stop the module (zero power to drive and steer)
-     */
     public void stop() {
         driveMotor.setPower(0.0);
-        steerServo.setPower(0.0);
+        steerServo.setPower(SteeringConstants.MIN_SERVO_POWER);
+    }
+
+    public void addTelemetry(Telemetry telemetry) {
+        telemetry.addLine("--- " + moduleName + " ---");
+
+        double current = getSteeringAngle();
+        double target = desiredState.angle.getRadians();
+        double error = MathUtils.normalizeAngleRadians(target - current);
+
+        telemetry.addData("Raw Voltage", "%.3f V", encoder.getRawVoltage());
+        telemetry.addData("Current Angle", "%.1f°", Math.toDegrees(current));
+        telemetry.addData("Target Angle", "%.1f°", Math.toDegrees(target));
+        telemetry.addData("Error", "%.1f°", Math.toDegrees(error));
+        telemetry.addData("Steer Power", "%.3f", steerServo.getPower());
+        telemetry.addData("Drive Power", "%.3f", driveMotor.getPower());
     }
 }

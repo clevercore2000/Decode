@@ -15,6 +15,4 @@ public class ControlConstants {
     public static double MAX_DRIVE_SPEED = 3.0;        // m/s (matches DriveConstants.MAX_SPEED)
     public static double MAX_ROTATION_SPEED = Math.PI; // rad/s (matches DriveConstants.MAX_ANGULAR_VELOCITY)
 
-    // === FIELD-CENTRIC ===
-    public static boolean FIELD_CENTRIC_DEFAULT = true;  // Start in field-centric mode by default
 }

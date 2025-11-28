@@ -28,7 +28,7 @@ public class DriveConstants {
     public static double DRIVE_GEAR_RATIO = 13.7;             // Motor:Wheel gear reduction
     public static final double MOTOR_TICKS_PER_REV = 384.5;   // Encoder ticks per motor revolution
     public static final double TICKS_PER_METER =
-        (MOTOR_TICKS_PER_REV * DRIVE_GEAR_RATIO) / WHEEL_CIRCUMFERENCE_METERS;
+            (MOTOR_TICKS_PER_REV * DRIVE_GEAR_RATIO) / WHEEL_CIRCUMFERENCE_METERS;
 
     // === VELOCITY LIMITS ===
     public static double MAX_SPEED_METERS_PER_SECOND = 3.0;   // Maximum translational speed
