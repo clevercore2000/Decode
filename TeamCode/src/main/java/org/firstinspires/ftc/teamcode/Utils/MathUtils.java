@@ -16,4 +16,20 @@ public class MathUtils {
         }
         return angle;
     }
+
+    /**
+     * Normalizes an angle to the range [-π, π] radians.
+     * This is critical for swerve module control to ensure shortest-path rotation.
+     * @param angle The angle to normalize in radians.
+     * @return The normalized angle in radians.
+     */
+    public static double normalizeAngleRadians(double angle) {
+        while (angle > Math.PI) {
+            angle -= 2.0 * Math.PI;
+        }
+        while (angle < -Math.PI) {
+            angle += 2.0 * Math.PI;
+        }
+        return angle;
+    }
 }
