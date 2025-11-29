@@ -17,10 +17,12 @@ public class SwerveModule {
     private final DcMotorEx driveMotor;
     private final CRServo steerServo;
     private final AxonEncoder encoder;
+    private final boolean driveInverted;
     private final boolean steerInverted;
     private final String moduleName;
 
     private SwerveModuleState desiredState = new SwerveModuleState();
+    private Rotation2d lastNonZeroAngle = new Rotation2d(0); // Cache for angle holding
 
     public SwerveModule(
             DcMotorEx driveMotor,
@@ -33,16 +35,13 @@ public class SwerveModule {
         this.driveMotor = driveMotor;
         this.steerServo = steerServo;
         this.encoder = encoder;
+        this.driveInverted = driveInverted;
         this.steerInverted = steerInverted;
         this.moduleName = moduleName;
 
         driveMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         driveMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         driveMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
-        if (driveInverted) {
-            driveMotor.setDirection(DcMotorSimple.Direction.REVERSE);
-        }
     }
 
     public double getSteeringAngle() {
@@ -55,20 +54,40 @@ public class SwerveModule {
     }
 
     public void setDesiredState(SwerveModuleState desiredState, boolean optimize) {
+        // Detect if this is a "stationary default" state from kinematics
+        // When drive(0,0,0) is called → kinematics returns speed=0, angle=0 (default)
+        boolean isStationaryDefault =
+                Math.abs(desiredState.speedMetersPerSecond) < 0.001 &&
+                Math.abs(desiredState.angle.getRadians()) < 0.001;
+
+        // If stationary with default angle, preserve last known direction
+        SwerveModuleState stateToUse;
+        if (isStationaryDefault) {
+            // Use cached angle from last movement (holds module position)
+            stateToUse = new SwerveModuleState(0, lastNonZeroAngle);
+        } else {
+            stateToUse = desiredState;
+        }
+
         // CRITICAL: Only optimize when actually moving
         // Optimizing zero-velocity commands causes modules to flip 180° for no reason
         SwerveModuleState stateToSet;
-        if (optimize && Math.abs(desiredState.speedMetersPerSecond) > 0.001) {
+        if (optimize && Math.abs(stateToUse.speedMetersPerSecond) > 0.001) {
             stateToSet = SwerveModuleState.optimize(
-                    desiredState,
+                    stateToUse,
                     new Rotation2d(getSteeringAngle())
             );
         } else {
-            // Zero velocity or optimization disabled: use desired state as-is
-            stateToSet = desiredState;
+            // Zero velocity or optimization disabled: use state as-is
+            stateToSet = stateToUse;
         }
 
         this.desiredState = stateToSet;
+
+        // Cache angle AFTER optimization (not before!) to hold the actual applied angle
+        if (!isStationaryDefault && Math.abs(stateToSet.speedMetersPerSecond) > 0.001) {
+            lastNonZeroAngle = stateToSet.angle;
+        }
 
         double current = getSteeringAngle();
         double target = stateToSet.angle.getRadians();
@@ -91,6 +110,9 @@ public class SwerveModule {
 
         double drivePower = stateToSet.speedMetersPerSecond * DriveConstants.DRIVE_FF;
         drivePower = Math.max(-1.0, Math.min(1.0, drivePower));
+        if (driveInverted) {
+            drivePower *= -1.0;
+        }
         driveMotor.setPower(drivePower);
     }
 

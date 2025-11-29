@@ -46,10 +46,10 @@ public class SwerveTeleopAngle extends LinearOpMode {
                 }
 
                 // Calculate robot frame angle (0° = forward, 90° = left, 180° = back, 270° = right)
-                // This is 90° rotated from joystick frame
-                double robotAngleDegrees = joystickAngleDegrees + 90.0;
-                if (robotAngleDegrees >= 360) {
-                    robotAngleDegrees -= 360;
+                // This is -90° rotated from joystick frame
+                double robotAngleDegrees = joystickAngleDegrees - 90.0;
+                if (robotAngleDegrees < 0) {
+                    robotAngleDegrees += 360;
                 }
 
                 // Only update angle display if joystick is outside deadband
@@ -64,8 +64,7 @@ public class SwerveTeleopAngle extends LinearOpMode {
                 double strafe = -leftStickX * ControlConstants.MAX_DRIVE_SPEED;
                 double rotation = rotationInput * ControlConstants.MAX_ROTATION_SPEED;
 
-                boolean isRotating = Math.abs(rotation) > 0;
-                drive.drive(forward, strafe, rotation, !isRotating);
+                drive.drive(forward, strafe, rotation, true);
 
                 // Telemetry
                 telemetry.addData("Angle", "%.0f\u00b0", lastAngleDegrees);

@@ -31,7 +31,7 @@ public class SwerveDrive {
                 hardwareMap.get(DcMotorEx.class, "fl"),
                 hardwareMap.get(CRServo.class, "fl_servo"),
                 new AxonEncoder(hardwareMap.get(AnalogInput.class, "fl_enc"), SteeringConstants.FL_VOLTAGE_OFFSET),
-                true, true, "FL"  // Drive NOT inverted - all motors same direction
+                false, true, "FL"  // Drive NOT inverted - all motors same direction
         );
 
         fr = new SwerveModule(
@@ -45,14 +45,14 @@ public class SwerveDrive {
                 hardwareMap.get(DcMotorEx.class, "bl"),
                 hardwareMap.get(CRServo.class, "bl_servo"),
                 new AxonEncoder(hardwareMap.get(AnalogInput.class, "bl_enc"), SteeringConstants.BL_VOLTAGE_OFFSET),
-                false, true, "BL"
+                true, true, "BL"
         );
 
         br = new SwerveModule(
                 hardwareMap.get(DcMotorEx.class, "br"),
                 hardwareMap.get(CRServo.class, "br_servo"),
                 new AxonEncoder(hardwareMap.get(AnalogInput.class, "br_enc"), SteeringConstants.BR_VOLTAGE_OFFSET),
-                false, true, "BR"
+                true, true, "BR"
         );
     }
 
