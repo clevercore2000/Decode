@@ -4,10 +4,17 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.Constants.ControlConstants;
+import org.firstinspires.ftc.teamcode.Subsystems.Outtake;
 import org.firstinspires.ftc.teamcode.Subsystems.SwerveDrive;
 
 @TeleOp(name = "Swerve Teleop (Angle)", group = "Drive")
 public class SwerveTeleopAngle extends LinearOpMode {
+    private Hardware hardware;
+
+    private Outtake outtake;
+
+    private Intake intake;
+
     private SwerveDrive drive;
     private double lastAngleDegrees = 0.0;
 
@@ -25,6 +32,32 @@ public class SwerveTeleopAngle extends LinearOpMode {
             // Reset wheels to forward
             // Main teleop loop
             while (opModeIsActive()) {
+
+
+                if (gamepad1.cross) {
+                    if (gamepad1.left_bumper) {
+                        outtake.setTargetRPM(1500);
+                    } else if (gamepad1.right_bumper) {
+                        outtake.setTargetRPM(4000);
+                    } else {
+                        outtake.setTargetRPM(OuttakeConstants.TARGET_RPM);
+                    }
+                } else {
+                    outtake.stop();
+                }
+
+                // Call rampShoot BEFORE update so state machine runs before execute()
+                outtake.rampShoot(gamepad1.triangle);
+
+                outtake.update();
+
+                if (gamepad1.square) {
+                    intake.Start(0.9);
+                } else {
+                    intake.Stop();
+                }
+
+
                 // Read joysticks
                 double leftStickX = gamepad1.left_stick_x;
                 double leftStickY = -gamepad1.left_stick_y; // Y stick is inverted
