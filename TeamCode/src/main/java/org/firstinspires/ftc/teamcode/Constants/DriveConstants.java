@@ -32,7 +32,7 @@ public class DriveConstants {
 
     // === VELOCITY LIMITS ===
     public static double MAX_SPEED_METERS_PER_SECOND = 3.0;   // Maximum translational speed
-    public static double MAX_ANGULAR_VELOCITY = Math.PI;      // Maximum rotational speed (rad/s)
+    public static double MAX_ANGULAR_VELOCITY = 4 * Math.PI;  // Maximum rotational speed (rad/s) - 2 rotations/sec
 
     // === DRIVE CONTROL (Simple feedforward for now, no velocity PID) ===
     public static double DRIVE_P = 0.0;   // Not needed for open-loop feedforward control

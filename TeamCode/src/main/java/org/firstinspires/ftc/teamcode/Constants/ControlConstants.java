@@ -13,6 +13,6 @@ public class ControlConstants {
 
     // === SPEED SCALING ===
     public static double MAX_DRIVE_SPEED = 3.0;        // m/s (matches DriveConstants.MAX_SPEED)
-    public static double MAX_ROTATION_SPEED = Math.PI; // rad/s (matches DriveConstants.MAX_ANGULAR_VELOCITY)
+    public static double MAX_ROTATION_SPEED = 4 * Math.PI; // rad/s - 2 rotations/sec (typical FTC competitive speed)
 
 }

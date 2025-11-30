@@ -23,7 +23,7 @@ public class AxonEncoder {
             adjustedVoltage += SteeringConstants.MAX_VOLTAGE;
         }
 
-        double servoAngle = (adjustedVoltage / SteeringConstants.MAX_VOLTAGE) * 720.0;
+        double servoAngle = (adjustedVoltage / SteeringConstants.MAX_VOLTAGE) * 360.0;
         double wheelAngle = servoAngle / SteeringConstants.SERVO_TO_WHEEL_RATIO;
 
         // Apply EMA filter only if alpha is greater than 0

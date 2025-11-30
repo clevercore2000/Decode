@@ -4,6 +4,9 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.Constants.ControlConstants;
+import org.firstinspires.ftc.teamcode.Constants.OuttakeConstants;
+import org.firstinspires.ftc.teamcode.Hardware.Hardware;
+import org.firstinspires.ftc.teamcode.Subsystems.Intake;
 import org.firstinspires.ftc.teamcode.Subsystems.Outtake;
 import org.firstinspires.ftc.teamcode.Subsystems.SwerveDrive;
 
@@ -20,7 +23,10 @@ public class SwerveTeleopAngle extends LinearOpMode {
 
     @Override
     public void runOpMode() {
+        hardware =new Hardware(hardwareMap);
         drive = new SwerveDrive(hardwareMap);
+        outtake = new Outtake(hardware);
+        intake = new Intake(hardware);
 
         telemetry.addLine("Robot-Centric Swerve Drive Ready");
         telemetry.addLine("Press START to reset wheels to 0 and begin.");
@@ -34,10 +40,10 @@ public class SwerveTeleopAngle extends LinearOpMode {
             while (opModeIsActive()) {
 
 
-                if (gamepad1.cross) {
-                    if (gamepad1.left_bumper) {
+                if (gamepad2.cross) {
+                    if (gamepad2.left_bumper) {
                         outtake.setTargetRPM(1500);
-                    } else if (gamepad1.right_bumper) {
+                    } else if (gamepad2.right_bumper) {
                         outtake.setTargetRPM(4000);
                     } else {
                         outtake.setTargetRPM(OuttakeConstants.TARGET_RPM);
@@ -47,11 +53,11 @@ public class SwerveTeleopAngle extends LinearOpMode {
                 }
 
                 // Call rampShoot BEFORE update so state machine runs before execute()
-                outtake.rampShoot(gamepad1.triangle);
+                outtake.rampShoot(gamepad2.triangle);
 
                 outtake.update();
 
-                if (gamepad1.square) {
+                if (gamepad2.square) {
                     intake.Start(0.9);
                 } else {
                     intake.Stop();
