@@ -13,7 +13,7 @@ public class SteeringConstants {
 
     // === VOLTAGE CONFIGURATION ===
     public static final double MIN_VOLTAGE = 0.0;
-    public static final double MAX_VOLTAGE = 3.3;
+    public static final double MAX_VOLTAGE = 6.6;
 
     // === CALIBRATION OFFSETS (Voltage when wheel points forward) ===
     public static final double FL_VOLTAGE_OFFSET = 0.843;

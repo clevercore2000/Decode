@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.Subsystems;
 
+import com.arcrobotics.ftclib.geometry.Rotation2d;
 import com.arcrobotics.ftclib.kinematics.wpilibkinematics.ChassisSpeeds;
 import com.arcrobotics.ftclib.kinematics.wpilibkinematics.SwerveDriveKinematics;
 import com.arcrobotics.ftclib.kinematics.wpilibkinematics.SwerveModuleState;
@@ -14,7 +15,7 @@ import org.firstinspires.ftc.teamcode.Constants.SteeringConstants;
 import org.firstinspires.ftc.teamcode.Hardware.AxonEncoder;
 
 public class SwerveDrive {
-    private final SwerveModule fl, fr, bl, br;
+    public final SwerveModule fl, fr, bl, br;
     private final SwerveDriveKinematics kinematics;
 
     public SwerveDrive(HardwareMap hardwareMap) {
@@ -27,32 +28,29 @@ public class SwerveDrive {
         );
 
         // Initialize all 4 modules
-        fl = new SwerveModule(
-                hardwareMap.get(DcMotorEx.class, "fl"),
-                hardwareMap.get(CRServo.class, "fl_servo"),
-                new AxonEncoder(hardwareMap.get(AnalogInput.class, "fl_enc"), SteeringConstants.FL_VOLTAGE_OFFSET),
-                false, true, "FL"  // Drive NOT inverted - all motors same direction
-        );
+        fl = createModule(hardwareMap, "fl", SteeringConstants.FL_VOLTAGE_OFFSET, false, true);
+        fr = createModule(hardwareMap, "fr", SteeringConstants.FR_VOLTAGE_OFFSET, false, true);
+        bl = createModule(hardwareMap, "bl", SteeringConstants.BL_VOLTAGE_OFFSET, true, true);
+        br = createModule(hardwareMap, "br", SteeringConstants.BR_VOLTAGE_OFFSET, true, true);
+    }
 
-        fr = new SwerveModule(
-                hardwareMap.get(DcMotorEx.class, "fr"),
-                hardwareMap.get(CRServo.class, "fr_servo"),
-                new AxonEncoder(hardwareMap.get(AnalogInput.class, "fr_enc"), SteeringConstants.FR_VOLTAGE_OFFSET),
-                false, true, "FR"  // Drive NOT inverted - all motors same direction
-        );
-
-        bl = new SwerveModule(
-                hardwareMap.get(DcMotorEx.class, "bl"),
-                hardwareMap.get(CRServo.class, "bl_servo"),
-                new AxonEncoder(hardwareMap.get(AnalogInput.class, "bl_enc"), SteeringConstants.BL_VOLTAGE_OFFSET),
-                true, true, "BL"
-        );
-
-        br = new SwerveModule(
-                hardwareMap.get(DcMotorEx.class, "br"),
-                hardwareMap.get(CRServo.class, "br_servo"),
-                new AxonEncoder(hardwareMap.get(AnalogInput.class, "br_enc"), SteeringConstants.BR_VOLTAGE_OFFSET),
-                true, true, "BR"
+    private SwerveModule createModule(
+        HardwareMap hardwareMap,
+        String name,
+        double voltageOffset,
+        boolean driveInverted,
+        boolean steerInverted
+    ) {
+        return new SwerveModule(
+            hardwareMap.get(DcMotorEx.class, name),
+            hardwareMap.get(CRServo.class, name + "_servo"),
+            new AxonEncoder(
+                hardwareMap.get(AnalogInput.class, name + "_enc"),
+                voltageOffset
+            ),
+            driveInverted,
+            steerInverted,
+            name.toUpperCase()
         );
     }
 
@@ -79,6 +77,14 @@ public class SwerveDrive {
         fr.hold();
         bl.hold();
         br.hold();
+    }
+
+    public void resetModulesToZero() {
+        SwerveModuleState zeroState = new SwerveModuleState(0.0, new Rotation2d(0));
+        fl.setDesiredState(zeroState, false);
+        fr.setDesiredState(zeroState, false);
+        bl.setDesiredState(zeroState, false);
+        br.setDesiredState(zeroState, false);
     }
 
     public void addTelemetry(Telemetry telemetry) {

@@ -7,7 +7,7 @@ public class MathUtils {
      * @param angle The angle to normalize in degrees.
      * @return The normalized angle in degrees.
      */
-    public static double normalizeAngle(double angle) {
+    public static double normalizeAngleDegrees(double angle) {
         while (angle > 180) {
             angle -= 360;
         }

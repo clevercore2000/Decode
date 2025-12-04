@@ -17,13 +17,22 @@ public class AxonEncoder {
 
     public double getAngleDegrees() {
         double currentVoltage = encoder.getVoltage();
+
+        // Clamp voltage to valid range (prevents spikes from causing angle errors)
+        if (currentVoltage < 0.0) {
+            currentVoltage = 0.0;
+        }
+        if (currentVoltage > SteeringConstants.MAX_VOLTAGE) {
+            currentVoltage = SteeringConstants.MAX_VOLTAGE;
+        }
+
         double adjustedVoltage = currentVoltage - voltageOffset;
 
         if (adjustedVoltage < 0) {
             adjustedVoltage += SteeringConstants.MAX_VOLTAGE;
         }
 
-        double servoAngle = (adjustedVoltage / SteeringConstants.MAX_VOLTAGE) * 360.0;
+        double servoAngle = (adjustedVoltage / SteeringConstants.MAX_VOLTAGE) * 720.0;
         double wheelAngle = servoAngle / SteeringConstants.SERVO_TO_WHEEL_RATIO;
 
         // Apply EMA filter only if alpha is greater than 0

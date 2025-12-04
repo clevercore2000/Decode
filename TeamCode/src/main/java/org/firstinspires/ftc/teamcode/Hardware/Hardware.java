@@ -3,7 +3,6 @@ package org.firstinspires.ftc.teamcode.Hardware;
 import android.database.AbstractCursor;
 
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import org.firstinspires.ftc.teamcode.Subsystems.SwerveDrive;
 
 /**
  * Central hardware manager for DECODE season robot
@@ -18,9 +17,6 @@ import org.firstinspires.ftc.teamcode.Subsystems.SwerveDrive;
  * - Swerve Drive: 4-module coaxial swerve with Axon Mini servos
  */
 public class Hardware {
-    // Subsystems
-    public SwerveDrive swerveDrive;
-
     // Hardware abstraction layers
 
     public OuttakeHardware outtakeHardware;

@@ -91,10 +91,10 @@ public class SwerveEncoderReader extends LinearOpMode {
         }
 
         // Convert the adjusted voltage to a servo angle (0-360 degrees)
-        double servoAngle = (adjustedVoltage / SteeringConstants.MAX_VOLTAGE) * 720.0;
+        double servoAngle = (adjustedVoltage / SteeringConstants.MAX_VOLTAGE) * 360.0;
 
         // Convert the servo angle to the wheel angle
-        double wheelAngle = servoAngle / SteeringConstants.SERVO_TO_WHEEL_RATIO;
+        double wheelAngle = servoAngle; // SteeringConstants.SERVO_TO_WHEEL_RATIO;
 
         telemetry.addData("Raw Voltage", "%.4f V", currentVoltage);
         telemetry.addData("Adjusted Voltage", "%.4f V", adjustedVoltage);
