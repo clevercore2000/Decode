@@ -18,7 +18,6 @@ public class PIDController
     private double deltaTime = 0;
     ElapsedTime timer;
 
-    // Continuous input support for circular quantities (angles)
     private boolean isContinuous = false;
     private double inputMin = 0;
     private double inputMax = 0;
@@ -44,11 +43,9 @@ public class PIDController
         setpoint = targetSetpoint;
         processVariable = currentValue;
 
-        // Read deltaTime BEFORE resetting timer (prevents derivative spikes)
         deltaTime = timer.milliseconds()/1E3;
         timer.reset();
 
-        // Error calculation with optional continuous input wrapping
         error = setpoint - processVariable;
         if (isContinuous) {
             double inputRange = inputMax - inputMin;
@@ -58,11 +55,9 @@ public class PIDController
             }
         }
 
-        // Integral term with windup protection
         integral += error * deltaTime;
         integral = Math.max(-maxIntegral, Math.min(integral, maxIntegral));
 
-        // Derivative term (prevent division by zero)
         if (deltaTime > 0) {
             derivative = (error - previousError) / deltaTime;
         } else {
@@ -70,28 +65,20 @@ public class PIDController
         }
         previousError = error;
 
-        // Calculate total output
         output = (kP * error) + (kI * integral) + (kD * derivative);
 
-        // Apply limiter
         output = Math.max(-1, Math.min(output, 1));
         return output;
     }
 
-    /**
-     * Enable continuous input for circular quantities like angles
-     * @param min Minimum input value (e.g., -Math.PI)
-     * @param max Maximum input value (e.g., Math.PI)
-     */
+
     public void enableContinuousInput(double min, double max) {
         isContinuous = true;
         inputMin = min;
         inputMax = max;
     }
 
-    /**
-     * Disable continuous input
-     */
+    
     public void disableContinuousInput() {
         isContinuous = false;
     }
