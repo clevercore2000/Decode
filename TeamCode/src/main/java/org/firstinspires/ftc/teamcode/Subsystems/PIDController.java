@@ -47,6 +47,9 @@ public class PIDController
         timer.reset();
 
         error = setpoint - processVariable;
+
+
+        /*
         if (isContinuous) {
             double inputRange = inputMax - inputMin;
             error = ((error + inputRange / 2) % inputRange) - inputRange / 2;
@@ -57,7 +60,7 @@ public class PIDController
 
         integral += error * deltaTime;
         integral = Math.max(-maxIntegral, Math.min(integral, maxIntegral));
-
+        */
         if (deltaTime > 0) {
             derivative = (error - previousError) / deltaTime;
         } else {

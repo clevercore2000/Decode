@@ -5,7 +5,6 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 
 /**
  * Hardware configuration for Intake subsystem
- * Simple single-motor intake
  */
 public class IntakeHardware {
 

@@ -9,55 +9,18 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import org.firstinspires.ftc.teamcode.Hardware.Hardware;
 import org.firstinspires.ftc.teamcode.Constants.DriveConstants;
 
-/**
- * Swerve Module Test OpMode
- *
- * Test individual modules and coordinated swerve drive movements
- *
- * Test Modes:
- * 1. Individual Module Test - Test one module at a time
- * 2. All Modules Test - Command all modules to same state
- * 3. Kinematics Test - Test coordinated movements (forward, strafe, rotate)
- *
- * Controls:
- * Mode 1 (Individual):
- * - D-Pad Up/Down: Select module (FL/FR/BL/BR)
- * - Left Stick: Control selected module (X=angle, Y=speed)
- *
- * Mode 2 (All Modules):
- * - Left Stick: Control all modules (X=angle, Y=speed)
- *
- * Mode 3 (Kinematics):
- * - D-Pad Up: Forward
- * - D-Pad Down: Backward
- * - D-Pad Left: Strafe Left
- * - D-Pad Right: Strafe Right
- * - Left Trigger: Rotate CCW
- * - Right Trigger: Rotate CW
- *
- * Switch Modes:
- * - X Button: Individual Module Test
- * - Y Button: All Modules Test
- * - B Button: Kinematics Test
- * - A Button: Stop all modules
- */
-// Enable when needed for testing
+
 @TeleOp(name = "Swerve Module Test", group = "Testing")
 public class SwerveModuleTest extends LinearOpMode {
 
     private Hardware hardware;
 
-    private enum TestMode {
-        INDIVIDUAL,
-        ALL_MODULES,
-        KINEMATICS
-    }
+    private enum TestMode { INDIVIDUAL, ALL_MODULES, KINEMATICS }
 
     private TestMode currentMode = TestMode.INDIVIDUAL;
-    private int selectedModule = 0;  // 0=FL, 1=FR, 2=BL, 3=BR
+    private int selectedModule = 0;
     private String[] moduleNames = {"Front Left", "Front Right", "Back Left", "Back Right"};
 
-    // Button state tracking
     private boolean lastXButton = false;
     private boolean lastYButton = false;
     private boolean lastBButton = false;
@@ -98,9 +61,6 @@ public class SwerveModuleTest extends LinearOpMode {
         hardware.swerveDrive.stop();
     }
 
-    /**
-     * Handle mode selection buttons
-     */
     private void handleModeSelection() {
         boolean currentXButton = gamepad1.x;
         boolean currentYButton = gamepad1.y;
@@ -126,9 +86,6 @@ public class SwerveModuleTest extends LinearOpMode {
         lastAButton = currentAButton;
     }
 
-    /**
-     * Handle module selection for individual mode
-     */
     private void handleModuleSelection() {
         if (currentMode != TestMode.INDIVIDUAL) {
             return;
@@ -148,25 +105,15 @@ public class SwerveModuleTest extends LinearOpMode {
         lastDpadDown = currentDpadDown;
     }
 
-    /**
-     * Test individual module control
-     */
     private void runIndividualModuleTest() {
-        // Get joystick input
         double stickX = gamepad1.left_stick_x;
         double stickY = -gamepad1.left_stick_y;
 
-        // Convert to angle and speed
-        double speed = Math.hypot(stickX, stickY) * 2.0;  // Scale to ~2 m/s max
+        double speed = Math.hypot(stickX, stickY) * 2.0;
         double angle = Math.atan2(stickY, stickX);
 
-        // Create state
-        SwerveModuleState state = new SwerveModuleState(
-            speed,
-            new Rotation2d(angle)
-        );
+        SwerveModuleState state = new SwerveModuleState(speed, new Rotation2d(angle));
 
-        // Command selected module, stop others
         for (int i = 0; i < 4; i++) {
             if (i == selectedModule) {
                 hardware.swerveDrive.getModule(i).setDesiredState(state);
@@ -176,58 +123,37 @@ public class SwerveModuleTest extends LinearOpMode {
         }
     }
 
-    /**
-     * Test all modules with same command
-     */
     private void runAllModulesTest() {
-        // Get joystick input
         double stickX = gamepad1.left_stick_x;
         double stickY = -gamepad1.left_stick_y;
 
-        // Convert to angle and speed
         double speed = Math.hypot(stickX, stickY) * 2.0;
         double angle = Math.atan2(stickY, stickX);
 
-        // Create state
-        SwerveModuleState state = new SwerveModuleState(
-            speed,
-            new Rotation2d(angle)
-        );
-
-        // Command all modules to same state
+        SwerveModuleState state = new SwerveModuleState(speed, new Rotation2d(angle));
         SwerveModuleState[] states = {state, state, state, state};
         hardware.swerveDrive.setModuleStates(states);
     }
 
-    /**
-     * Test coordinated kinematics movements
-     */
     private void runKinematicsTest() {
         double forward = 0.0;
         double strafe = 0.0;
         double rotation = 0.0;
 
-        // Test speed (m/s and rad/s)
         final double TEST_SPEED = 1.0;
-        final double TEST_ROTATION = Math.PI / 4;  // 45 degrees/sec
+        final double TEST_ROTATION = Math.PI / 4;
 
-        // D-Pad for translation
         if (gamepad1.dpad_up) forward = TEST_SPEED;
         if (gamepad1.dpad_down) forward = -TEST_SPEED;
         if (gamepad1.dpad_left) strafe = TEST_SPEED;
         if (gamepad1.dpad_right) strafe = -TEST_SPEED;
 
-        // Triggers for rotation
         if (gamepad1.left_trigger > 0.1) rotation = TEST_ROTATION * gamepad1.left_trigger;
         if (gamepad1.right_trigger > 0.1) rotation = -TEST_ROTATION * gamepad1.right_trigger;
 
-        // Drive (robot-centric)
         hardware.swerveDrive.drive(forward, strafe, rotation, false);
     }
 
-    /**
-     * Update telemetry display
-     */
     private void updateTelemetry() {
         telemetry.clear();
         telemetry.addLine("===== SWERVE MODULE TEST =====");
@@ -254,7 +180,6 @@ public class SwerveModuleTest extends LinearOpMode {
         }
         telemetry.addLine();
 
-        // Display controls based on mode
         telemetry.addLine("Controls:");
         switch (currentMode) {
             case INDIVIDUAL:

@@ -8,56 +8,34 @@ import com.qualcomm.robotcore.hardware.CRServo;
 
 import org.firstinspires.ftc.teamcode.Constants.SteeringConstants;
 
-/**
- * Encoder Test OpMode
- *
- * Tests analog encoder readings from Axon Mini servos
- * Displays raw voltage and calculated angles
- *
- * Purpose:
- * - Verify encoders are outputting voltage
- * - Check if voltage changes when servos rotate
- * - Diagnose wiring/configuration issues
- *
- * Controls:
- * - D-Pad Up/Down: Select module to test
- * - Left Bumper: Rotate selected servo CCW (slowly)
- * - Right Bumper: Rotate selected servo CW (slowly)
- * - A Button: Stop all servos
- */
+
 @Disabled
 @TeleOp(name = "Encoder Test", group = "Testing")
 public class EncoderTest extends LinearOpMode {
 
-    // Analog encoders
     private AnalogInput flEncoder;
     private AnalogInput frEncoder;
     private AnalogInput blEncoder;
     private AnalogInput brEncoder;
 
-    // Steering servos
     private CRServo flSteer;
     private CRServo frSteer;
     private CRServo blSteer;
     private CRServo brSteer;
 
-    // Module selection
-    private int selectedModule = 0;  // 0=FL, 1=FR, 2=BL, 3=BR
+    private int selectedModule = 0;
     private String[] moduleNames = {"Front Left (FL)", "Front Right (FR)", "Back Left (BL)", "Back Right (BR)"};
 
-    // Button tracking
     private boolean lastDpadUp = false;
     private boolean lastDpadDown = false;
 
     @Override
     public void runOpMode() {
-        // Initialize encoders
         flEncoder = hardwareMap.get(AnalogInput.class, "fl_enc");
         frEncoder = hardwareMap.get(AnalogInput.class, "fr_enc");
         blEncoder = hardwareMap.get(AnalogInput.class, "bl_enc");
         brEncoder = hardwareMap.get(AnalogInput.class, "br_enc");
 
-        // Initialize servos
         flSteer = hardwareMap.get(CRServo.class, "fl_servo");
         frSteer = hardwareMap.get(CRServo.class, "fr_servo");
         blSteer = hardwareMap.get(CRServo.class, "bl_servo");
@@ -79,7 +57,6 @@ public class EncoderTest extends LinearOpMode {
         waitForStart();
 
         while (opModeIsActive()) {
-            // Handle module selection
             boolean currentDpadUp = gamepad1.dpad_up;
             boolean currentDpadDown = gamepad1.dpad_down;
 
@@ -93,32 +70,22 @@ public class EncoderTest extends LinearOpMode {
             lastDpadUp = currentDpadUp;
             lastDpadDown = currentDpadDown;
 
-            // Control selected servo
             if (gamepad1.left_bumper) {
-                // Rotate CCW slowly
                 setServo(selectedModule, 0.2);
             } else if (gamepad1.right_bumper) {
-                // Rotate CW slowly
                 setServo(selectedModule, -0.2);
             } else if (gamepad1.a) {
-                // Stop all
                 stopAllServos();
             } else {
-                // Stop selected servo when no input
                 setServo(selectedModule, 0.0);
             }
 
-            // Update telemetry
             updateTelemetry();
         }
 
-        // Stop servos when exiting
         stopAllServos();
     }
 
-    /**
-     * Update telemetry with encoder readings
-     */
     private void updateTelemetry() {
         telemetry.clear();
         telemetry.addLine("=============================");
@@ -158,18 +125,12 @@ public class EncoderTest extends LinearOpMode {
         telemetry.update();
     }
 
-    /**
-     * Display voltage and angle for one encoder
-     */
     private void displayEncoderData(String name, AnalogInput encoder, double offset) {
         double voltage = encoder.getVoltage();
-
-        // Convert voltage to wheel angle (encoder on servo shaft with 2:1 reduction)
+        // Voltage to wheel angle (encoder on servo shaft with 2:1 reduction)
         double rawAngle = (voltage / SteeringConstants.ANALOG_VOLTAGE_MAX) * 2 * Math.PI * SteeringConstants.SERVO_TO_STEERING_RATIO;
-        double angle = rawAngle - offset;
-        angle = normalizeAngle(angle);
+        double angle = normalizeAngle(rawAngle - offset);
 
-        // Display both voltage and angle
         telemetry.addData(
             String.format("  %s", name),
             "%.3fV → %.1f°",
@@ -178,22 +139,12 @@ public class EncoderTest extends LinearOpMode {
         );
     }
 
-    /**
-     * Normalize angle to [-π, π]
-     */
     private double normalizeAngle(double angle) {
-        while (angle > Math.PI) {
-            angle -= 2 * Math.PI;
-        }
-        while (angle < -Math.PI) {
-            angle += 2 * Math.PI;
-        }
+        while (angle > Math.PI) angle -= 2 * Math.PI;
+        while (angle < -Math.PI) angle += 2 * Math.PI;
         return angle;
     }
 
-    /**
-     * Count how many encoders are reading near 0V
-     */
     private int countZeroVoltages() {
         int count = 0;
         if (flEncoder.getVoltage() < 0.01) count++;
@@ -203,9 +154,6 @@ public class EncoderTest extends LinearOpMode {
         return count;
     }
 
-    /**
-     * Set power to specific servo
-     */
     private void setServo(int moduleIndex, double power) {
         switch (moduleIndex) {
             case 0: flSteer.setPower(power); break;
@@ -215,9 +163,6 @@ public class EncoderTest extends LinearOpMode {
         }
     }
 
-    /**
-     * Stop all servos
-     */
     private void stopAllServos() {
         flSteer.setPower(0.0);
         frSteer.setPower(0.0);

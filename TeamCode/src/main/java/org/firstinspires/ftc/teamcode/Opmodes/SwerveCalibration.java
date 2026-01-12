@@ -11,45 +11,17 @@ import org.firstinspires.ftc.teamcode.Subsystems.Intake;
 import org.firstinspires.ftc.teamcode.Subsystems.SwerveModule;
 import org.firstinspires.ftc.teamcode.Constants.SteeringConstants;
 
-/**
- * Swerve Module Calibration OpMode
- *
- * This OpMode helps you calibrate the zero positions for all swerve modules.
- *
- * CALIBRATION PROCEDURE:
- * 1. Run this OpMode
- * 2. Manually rotate each wheel so it points STRAIGHT FORWARD
- *    (Use a straightedge or alignment tool for precision)
- * 3. Read the "Current Angles" displayed in telemetry
- * 4. Copy those angle values into SteeringConstants.java as the offsets:
- *    - FL_ANGLE_OFFSET = <FL angle value>
- *    - FR_ANGLE_OFFSET = <FR angle value>
- *    - BL_ANGLE_OFFSET = <BL angle value>
- *    - BR_ANGLE_OFFSET = <BR angle value>
- * 5. Re-deploy code with new offsets
- * 6. Run this OpMode again to verify all angles read close to 0° when wheels are forward
- *
- * Controls:
- * - D-Pad Up/Down: Increase/Decrease module selection
- * - X Button: Test selected module (rotates to 0°, 90°, 180°, 270°)
- * - B Button: Stop test
- *
- * IMPORTANT: After setting offsets, all wheels should read 0° when pointing forward!
- */
-// Enable when needed for calibration
+
 @TeleOp(name = "Swerve Calibration", group = "Calibration")
 public class SwerveCalibration extends LinearOpMode {
 
     private Hardware hardware;
-
     private Intake intake;
 
-
-
-    private int selectedModule = 0;  // 0=FL, 1=FR, 2=BL, 3=BR
+    private int selectedModule = 0;
     private boolean testing = false;
     private int testAngleIndex = 0;
-    private double[] testAngles = {0.0, Math.PI/2, Math.PI, -Math.PI/2};  // 0°, 90°, 180°, -90°
+    private double[] testAngles = {0.0, Math.PI/2, Math.PI, -Math.PI/2};
     private String[] moduleNames = {"Front Left", "Front Right", "Back Left", "Back Right"};
 
     private boolean lastDpadUp = false;
@@ -60,10 +32,9 @@ public class SwerveCalibration extends LinearOpMode {
     @Override
     public void runOpMode() {
         hardware = new Hardware(hardwareMap);
-        //hardware = new Hardware(hardwareMap);
         intake = new Intake(hardware);
 
-        telemetry.setMsTransmissionInterval(50);  // Update telemetry quickly
+        telemetry.setMsTransmissionInterval(50);
 
         telemetry.addLine("==================================");
         telemetry.addLine("   SWERVE CALIBRATION TOOL");
@@ -80,7 +51,6 @@ public class SwerveCalibration extends LinearOpMode {
         waitForStart();
 
         while (opModeIsActive()) {
-            // ========== MODULE SELECTION ==========
             boolean currentDpadUp = gamepad1.dpad_up;
             boolean currentDpadDown = gamepad1.dpad_down;
 
@@ -94,36 +64,16 @@ public class SwerveCalibration extends LinearOpMode {
             lastDpadUp = currentDpadUp;
             lastDpadDown = currentDpadDown;
 
-            // ========== KEEP SERVOS POWERED FOR ENCODER READING ==========
-            // Important: Axon Mini encoders require servo power to output voltage
-            // Hold current position to keep servos active without movement
+            // Axon Mini encoders require servo power - hold position to keep active
             for (int i = 0; i < 4; i++) {
                 SwerveModule module = hardware.swerveDrive.getModule(i);
                 SwerveModuleState holdState = new SwerveModuleState(
-                    0.0,  // Zero drive velocity
-                    new Rotation2d(module.getCurrentSteeringAngle())  // Hold current angle
+                    0.0,
+                    new Rotation2d(module.getCurrentSteeringAngle())
                 );
                 module.setDesiredState(holdState);
             }
 
-            // ========== MODULE TESTING ==========
-          /*  boolean currentXButton = gamepad1.x;
-            boolean currentBButton = gamepad1.b;
-
-            if (currentXButton && !lastXButton) {
-                testing = true;
-                testAngleIndex = (testAngleIndex + 1) % testAngles.length;
-            }
-
-            if (currentBButton && !lastBButton) {
-                testing = false;
-                hardware.swerveDrive.stop();
-            }
-
-            lastXButton = currentXButton;
-            lastBButton = currentBButton; */
-
-            // If testing, command selected module to test angle
             if (testing) {
                 SwerveModule module = hardware.swerveDrive.getModule(selectedModule);
                 double targetAngle = testAngles[testAngleIndex];
@@ -136,7 +86,6 @@ public class SwerveCalibration extends LinearOpMode {
                 module.setDesiredState(testState);
             }
 
-            // ========== TELEMETRY ==========
             telemetry.clear();
             telemetry.addLine("==================================");
             telemetry.addLine("   SWERVE CALIBRATION TOOL");
@@ -212,14 +161,10 @@ public class SwerveCalibration extends LinearOpMode {
             telemetry.update();
         }
 
-        // Stop all modules when exiting
         hardware.swerveDrive.stop();
     }
 
-    /**
-     * Display the current raw angle reading for a module
-     * These are the values to copy into SwerveConstants.java
-     */
+    /** Values to copy into SteeringConstants.java */
     private void displayModuleAngle(int moduleIndex, String shortName) {
         SwerveModuleState state = hardware.swerveDrive.getModuleStates()[moduleIndex];
         double angleRadians = state.angle.getRadians();
@@ -233,9 +178,6 @@ public class SwerveCalibration extends LinearOpMode {
         );
     }
 
-    /**
-     * Display raw voltage for a module (diagnostic)
-     */
     private void displayModuleVoltage(int moduleIndex, String shortName) {
         double voltage = hardware.swerveDrive.getModule(moduleIndex).getRawEncoderVoltage();
         telemetry.addData(
@@ -245,9 +187,6 @@ public class SwerveCalibration extends LinearOpMode {
         );
     }
 
-    /**
-     * Get short name for module index
-     */
     private String getModuleName(int index) {
         switch (index) {
             case 0: return "FL";
