@@ -103,7 +103,9 @@ public class SwerveModule {
 
         double current = getSteeringAngle();
         double target = stateToSet.angle.getRadians();
-        double error = MathUtils.normalizeAngleRadians(target - current);
+        // Calculate shortest path error (handles 0°/360° wrapping correctly)
+        // e.g., current=350°, target=10° → error=+20° (not -340°)
+        double error = MathUtils.shortestAngularDistance(current, target);
 
         double steerPower;
         if (Math.abs(error) < SteeringConstants.STEERING_DEADBAND_RADIANS) {

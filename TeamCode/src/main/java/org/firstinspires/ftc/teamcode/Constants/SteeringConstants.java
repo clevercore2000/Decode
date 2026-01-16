@@ -13,7 +13,7 @@ public class SteeringConstants {
 
     // === VOLTAGE CONFIGURATION ===
     public static final double MIN_VOLTAGE = 0.0;
-    public static final double MAX_VOLTAGE = 6.6;
+    public static final double MAX_VOLTAGE = 3.3;  // Encoder outputs 0-3.3V for 360° rotation
 
     // === CALIBRATION OFFSETS (Voltage when wheel points forward) ===
     public static final double FL_VOLTAGE_OFFSET = 0.843;
@@ -21,10 +21,10 @@ public class SteeringConstants {
     public static final double BL_VOLTAGE_OFFSET = 2.4;
     public static final double BR_VOLTAGE_OFFSET = 1.6;
 
-    // === PID GAINS (Phase 1: P-only, tune via FTC Dashboard) ===
-    public static double STEER_P = 0.4;   // Proportional gain - start here, tune live
+    // === PID GAINS (tune via FTC Dashboard) ===
+    public static double STEER_P = 0.4;   // Proportional gain
     public static double STEER_I = 0.0;   // Integral - keep disabled for position control
-    public static double STEER_D = 0.0;   // Derivative - add in Phase 2 if needed
+    public static double STEER_D = 0.0;   // Derivative - add if needed for damping
 
     // === CONTROL PARAMETERS ===
     public static double STEERING_DEADBAND_RADIANS = 0.02;  // ~1.15° tolerance to prevent jitter
