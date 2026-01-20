@@ -34,89 +34,64 @@ public class SwerveTeleopAngle extends LinearOpMode {
 
         waitForStart();
 
-        if (opModeIsActive()) {
-            // Reset wheels to forward
-            // Main teleop loop
-            while (opModeIsActive()) {
-
-
-                if (gamepad2.cross) {
-                    if (gamepad2.left_bumper) {
-                        outtake.setTargetRPM(1500);
-                    } else if (gamepad2.right_bumper) {
-                        outtake.setTargetRPM(4000);
-                    } else {
-                        outtake.setTargetRPM(OuttakeConstants.TARGET_RPM);
-                    }
+        while (opModeIsActive()) {
+            // Outtake: Cross to spin, bumpers change speed
+            if (gamepad2.cross) {
+                if (gamepad2.left_bumper) {
+                    outtake.setTargetRPM(1500);
+                } else if (gamepad2.right_bumper) {
+                    outtake.setTargetRPM(4000);
                 } else {
-                    outtake.stop();
+                    outtake.setTargetRPM(OuttakeConstants.TARGET_RPM);
                 }
-
-                // Call rampShoot BEFORE update so state machine runs before execute()
-                outtake.rampShoot(gamepad2.triangle);
-
-                outtake.update();
-
-                if (gamepad2.square) {
-                    intake.Start(0.9);
-                } else {
-                    intake.Stop();
-                }
-
-                // Reset modules to forward position
-                if (gamepad1.dpad_up) {
-                    drive.resetModulesToZero();
-                }
-
-                // Read joysticks
-                double leftStickX = gamepad1.left_stick_x;
-                double leftStickY = -gamepad1.left_stick_y; // Y stick is inverted
-                double rotationInput = -gamepad1.right_stick_x;
-
-                // Apply deadbands to all axes
-                if (Math.abs(leftStickX) < ControlConstants.JOYSTICK_DEADBAND) leftStickX = 0;
-                if (Math.abs(leftStickY) < ControlConstants.JOYSTICK_DEADBAND) leftStickY = 0;
-                if (Math.abs(rotationInput) < ControlConstants.JOYSTICK_DEADBAND) rotationInput = 0;
-
-                // Calculate magnitude and angle FOR DISPLAY ONLY
-                double magnitude = Math.sqrt(leftStickX * leftStickX + leftStickY * leftStickY);
-
-                // Calculate joystick angle (0° = right, 90° = up, 180° = left, 270° = down)
-                double joystickAngleRadians = Math.atan2(leftStickY, leftStickX);
-                double joystickAngleDegrees = Math.toDegrees(joystickAngleRadians);
-                if (joystickAngleDegrees < 0) {
-                    joystickAngleDegrees += 360;
-                }
-
-                // Calculate robot frame angle (0° = forward, 90° = left, 180° = back, 270° = right)
-                // This is -90° rotated from joystick frame
-                double robotAngleDegrees = joystickAngleDegrees - 90.0;
-                if (robotAngleDegrees < 0) {
-                    robotAngleDegrees += 360;
-                }
-
-                // Only update angle display if joystick is outside deadband
-                if (magnitude > ControlConstants.JOYSTICK_DEADBAND) {
-                    lastAngleDegrees = robotAngleDegrees;
-                }
-
-                // Direct mapping: joystick axes → robot axes (NO polar decomposition!)
-                // Joystick: +Y = up, +X = right (after inversion)
-                // Robot:    +X = forward, +Y = left
-                double forward = leftStickY * ControlConstants.MAX_DRIVE_SPEED;
-                double strafe = -leftStickX * ControlConstants.MAX_DRIVE_SPEED;
-                double rotation = rotationInput * ControlConstants.MAX_ROTATION_SPEED;
-
-                drive.drive(forward, strafe, rotation, true);
-
-                // Telemetry
-                telemetry.addData("Angle", "%.0f\u00b0", lastAngleDegrees);
-                telemetry.addData("Fwd/Str/Rot", "%.1f / %.1f / %.1f", forward, strafe, rotation);
-                drive.addTelemetry(telemetry);
-                telemetry.update();
+            } else {
+                outtake.stop();
             }
-        }
+            outtake.rampShoot(gamepad2.triangle);
+            outtake.update();
 
-       // drive.hold();
+            if (gamepad2.square) {
+                intake.Start(0.9);
+            } else {
+                intake.Stop();
+            }
+
+            if (gamepad1.dpad_up) {
+                drive.resetModulesToZero();
+            }
+
+            double leftStickX = gamepad1.left_stick_x;
+            double leftStickY = -gamepad1.left_stick_y;
+            double rotationInput = -gamepad1.right_stick_x;
+
+            if (Math.abs(leftStickX) < ControlConstants.JOYSTICK_DEADBAND) leftStickX = 0;
+            if (Math.abs(leftStickY) < ControlConstants.JOYSTICK_DEADBAND) leftStickY = 0;
+            if (Math.abs(rotationInput) < ControlConstants.JOYSTICK_DEADBAND) rotationInput = 0;
+
+            // Angle display calculation
+            double magnitude = Math.sqrt(leftStickX * leftStickX + leftStickY * leftStickY);
+            double joystickAngleRadians = Math.atan2(leftStickY, leftStickX);
+            double joystickAngleDegrees = Math.toDegrees(joystickAngleRadians);
+            if (joystickAngleDegrees < 0) joystickAngleDegrees += 360;
+
+            // Convert joystick frame to robot frame (-90° rotation)
+            double robotAngleDegrees = joystickAngleDegrees - 90.0;
+            if (robotAngleDegrees < 0) robotAngleDegrees += 360;
+
+            if (magnitude > ControlConstants.JOYSTICK_DEADBAND) {
+                lastAngleDegrees = robotAngleDegrees;
+            }
+
+            double forward = leftStickY * ControlConstants.MAX_DRIVE_SPEED;
+            double strafe = -leftStickX * ControlConstants.MAX_DRIVE_SPEED;
+            double rotation = rotationInput * ControlConstants.MAX_ROTATION_SPEED;
+
+            drive.drive(forward, strafe, rotation, true);
+
+            telemetry.addData("Angle", "%.0f\u00b0", lastAngleDegrees);
+            telemetry.addData("Fwd/Str/Rot", "%.1f / %.1f / %.1f", forward, strafe, rotation);
+            drive.addTelemetry(telemetry);
+            telemetry.update();
+        }
     }
 }

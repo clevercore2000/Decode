@@ -19,7 +19,6 @@ public class SwerveDrive {
     private final SwerveDriveKinematics kinematics;
 
     public SwerveDrive(HardwareMap hardwareMap) {
-        // Initialize kinematics with module positions (FL, FR, BL, BR order)
         kinematics = new SwerveDriveKinematics(
                 DriveConstants.FL_POSITION,
                 DriveConstants.FR_POSITION,
@@ -27,7 +26,6 @@ public class SwerveDrive {
                 DriveConstants.BR_POSITION
         );
 
-        // Initialize all 4 modules
         fl = createModule(hardwareMap, "fl", SteeringConstants.FL_VOLTAGE_OFFSET, false, true);
         fr = createModule(hardwareMap, "fr", SteeringConstants.FR_VOLTAGE_OFFSET, false, true);
         bl = createModule(hardwareMap, "bl", SteeringConstants.BL_VOLTAGE_OFFSET, true, true);
@@ -59,7 +57,6 @@ public class SwerveDrive {
     }
 
     public void drive(double xSpeed, double ySpeed, double rotSpeed, boolean optimize) {
-        // Robot-centric control only
         ChassisSpeeds chassisSpeeds = new ChassisSpeeds(xSpeed, ySpeed, rotSpeed);
 
         SwerveModuleState[] moduleStates = kinematics.toSwerveModuleStates(chassisSpeeds);

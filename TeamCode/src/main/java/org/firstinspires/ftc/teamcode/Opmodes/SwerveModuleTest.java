@@ -50,7 +50,6 @@ public class SwerveModuleTest extends LinearOpMode {
 
         double targetDegrees = 0;
 
-        // Command all modules to 0° on start
         SwerveModuleState initialState = new SwerveModuleState(0.0, new Rotation2d(0));
         fl.setDesiredState(initialState);
         fr.setDesiredState(initialState);
@@ -58,45 +57,23 @@ public class SwerveModuleTest extends LinearOpMode {
         br.setDesiredState(initialState);
 
         while (opModeIsActive()) {
-            // Dpad right: +5°
-            if (gamepad1.dpad_right) {
-                targetDegrees += 5;
-                sleep(100);
-            }
-            // Dpad left: -5°
-            if (gamepad1.dpad_left) {
-                targetDegrees -= 5;
-                sleep(100);
-            }
-            // Right bumper: +45°
-            if (gamepad1.right_bumper) {
-                targetDegrees += 45;
-                sleep(200);
-            }
-            // Left bumper: -45°
-            if (gamepad1.left_bumper) {
-                targetDegrees -= 45;
-                sleep(200);
-            }
-            // A: Reset to 0°
-            if (gamepad1.a) {
-                targetDegrees = 0;
-                sleep(200);
-            }
+            if (gamepad1.dpad_right) { targetDegrees += 5; sleep(100); }
+            if (gamepad1.dpad_left) { targetDegrees -= 5; sleep(100); }
+            if (gamepad1.right_bumper) { targetDegrees += 45; sleep(200); }
+            if (gamepad1.left_bumper) { targetDegrees -= 45; sleep(200); }
+            if (gamepad1.a) { targetDegrees = 0; sleep(200); }
 
-            // Wrap to 0-360
             while (targetDegrees >= 360) targetDegrees -= 360;
             while (targetDegrees < 0) targetDegrees += 360;
 
             SwerveModuleState state = new SwerveModuleState(0.0, new Rotation2d(Math.toRadians(targetDegrees)));
-
             fl.setDesiredState(state);
             fr.setDesiredState(state);
             bl.setDesiredState(state);
             br.setDesiredState(state);
 
             telemetry.addLine("Target: " + String.format("%.0f°", targetDegrees));
-            telemetry.addLine("DPad L/R: ±5°  |  Bumpers: ±45°  |  A: Reset");
+            telemetry.addLine("DPad L/R: ±5° | Bumpers: ±45° | A: Reset");
             telemetry.addLine();
             fl.addTelemetry(telemetry);
             fr.addTelemetry(telemetry);
@@ -104,11 +81,5 @@ public class SwerveModuleTest extends LinearOpMode {
             br.addTelemetry(telemetry);
             telemetry.update();
         }
-
-        // No need for hold() - modules will naturally maintain angle via PID
-        // fl.hold();
-        // fr.hold();
-        // bl.hold();
-        // br.hold();a
     }
 }

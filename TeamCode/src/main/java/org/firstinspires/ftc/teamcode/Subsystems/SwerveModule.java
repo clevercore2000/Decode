@@ -22,7 +22,14 @@ public class SwerveModule {
     private final String moduleName;
 
     private SwerveModuleState desiredState = new SwerveModuleState();
-    private Rotation2d lastNonZeroAngle = new Rotation2d(0); // Cache for angle holding
+    private Rotation2d lastNonZeroAngle = null;
+    private double lastError = 0.0;
+    private long lastTime = System.nanoTime();
+
+    // Continuous angle tracking (fixes 0°/360° wrapping)
+    private double prevRawAngleDeg = 0.0;
+    private double unwrappedAngleDeg = 0.0;
+    private boolean firstAngleUpdate = true;
 
     public SwerveModule(
             DcMotorEx driveMotor,
@@ -45,8 +52,25 @@ public class SwerveModule {
     }
 
     public double getSteeringAngle() {
-        // Return raw angle (normalization happens in error calculation for shortest path)
-        return encoder.getAngleRadians();
+        double rawServoDeg = encoder.getRawAngleDegrees180();
+
+        if (firstAngleUpdate) {
+            prevRawAngleDeg = rawServoDeg;
+            unwrappedAngleDeg = rawServoDeg;
+            firstAngleUpdate = false;
+        }
+
+        // Unwrap delta to avoid jumps at boundary
+        double delta = rawServoDeg - prevRawAngleDeg;
+        if (delta > 180.0) delta -= 360.0;
+        if (delta < -180.0) delta += 360.0;
+
+        unwrappedAngleDeg += delta;
+        prevRawAngleDeg = rawServoDeg;
+
+        // 2:1 gear ratio: wheel = servo / 2
+        double wheelAngleDeg = unwrappedAngleDeg / 2.0;
+        return Math.toRadians(MathUtils.wrap180(wheelAngleDeg));
     }
 
     public void setDesiredState(SwerveModuleState desiredState) {
@@ -54,64 +78,58 @@ public class SwerveModule {
     }
 
     public void setDesiredState(SwerveModuleState desiredState, boolean optimize) {
-        // Detect if this is a "stationary default" state from kinematics
-        // When drive(0,0,0) is called → kinematics returns speed=0, angle=0 (default)
+        if (lastNonZeroAngle == null) {
+            lastNonZeroAngle = new Rotation2d(getSteeringAngle());
+        }
+
+        // When stopped, hold last direction instead of snapping to 0°
         boolean isStationaryDefault =
                 Math.abs(desiredState.speedMetersPerSecond) < 0.001 &&
                 Math.abs(desiredState.angle.getRadians()) < 0.001;
 
-        // If stationary with default angle, preserve last known direction
-        SwerveModuleState stateToUse;
-        if (isStationaryDefault) {
-            // Use cached angle from last movement (holds module position)
-            stateToUse = new SwerveModuleState(0, lastNonZeroAngle);
-        } else {
-            stateToUse = desiredState;
+        SwerveModuleState stateToUse = isStationaryDefault
+                ? new SwerveModuleState(0, lastNonZeroAngle)
+                : desiredState;
+
+        SwerveModuleState stateToSet = optimize
+                ? SwerveModuleState.optimize(stateToUse, new Rotation2d(getSteeringAngle()))
+                : stateToUse;
+
+        // Cache optimized angle for hold behavior
+        if (!isStationaryDefault && Math.abs(desiredState.speedMetersPerSecond) > 0.001) {
+            lastNonZeroAngle = stateToSet.angle;
         }
 
-        // Cache the DESIRED angle BEFORE optimization to remember intended direction
-        // (not the optimized angle which may be flipped 180°)
+        double targetRad = MathUtils.normalizeAngleRadians(stateToSet.angle.getRadians());
+        double speed = stateToSet.speedMetersPerSecond;
 
-        //DO NOT UNCOMMENT IT BREAKS STUFF
-      /*  if (!isStationaryDefault && Math.abs(desiredState.speedMetersPerSecond) > 0.001) {
-            lastNonZeroAngle = desiredState.angle;
-        }*/
-
-        // CRITICAL: Only optimize when actually moving
-        // Optimizing zero-velocity commands causes modules to flip 180° for no reason
-        SwerveModuleState stateToSet;
-        if (optimize && Math.abs(stateToUse.speedMetersPerSecond) > 0.1) {
-            stateToSet = SwerveModuleState.optimize(
-                    stateToUse,
-                    new Rotation2d(getSteeringAngle())
-            );
-        } else {
-            // Zero velocity or optimization disabled: use state as-is
-            stateToSet = stateToUse;
+        // Clamp to ±90° - reverse drive instead of rotating further
+        if (targetRad > Math.PI / 2) {
+            targetRad -= Math.PI;
+            speed = -speed;
+        } else if (targetRad < -Math.PI / 2) {
+            targetRad += Math.PI;
+            speed = -speed;
         }
 
         this.desiredState = stateToSet;
 
-        // Check if the angle was flipped and invert the drive power accordingly
-        double drivePower = stateToUse.speedMetersPerSecond * DriveConstants.DRIVE_FF;
-        double angleDifference = Math.abs(
-                MathUtils.normalizeAngleRadians(stateToUse.angle.getRadians() - stateToSet.angle.getRadians())
-        );
-        if (angleDifference > Math.PI) {
-            drivePower *= -1.0;
-        }
+        double drivePower = speed * DriveConstants.DRIVE_FF;
+        double error = MathUtils.shortestAngularDistance(getSteeringAngle(), targetRad);
 
-        double current = getSteeringAngle();
-        double target = stateToSet.angle.getRadians();
-        // Calculate shortest path error (handles 0°/360° wrapping correctly)
-        // e.g., current=350°, target=10° → error=+20° (not -340°)
-        double error = MathUtils.shortestAngularDistance(current, target);
+        // Calculate derivative
+        long now = System.nanoTime();
+        double dt = (now - lastTime) / 1e9;
+        lastTime = now;
+        double derivative = (dt > 0) ? (error - lastError) / dt : 0;
+        lastError = error;
 
         double steerPower;
         if (Math.abs(error) < SteeringConstants.STEERING_DEADBAND_RADIANS) {
             steerPower = SteeringConstants.MIN_SERVO_POWER;
         } else {
-            steerPower = error * SteeringConstants.STEER_P;
+            // PD control
+            steerPower = error * SteeringConstants.STEER_P + derivative * SteeringConstants.STEER_D;
             steerPower += Math.signum(steerPower) * SteeringConstants.STATIC_FRICTION_COMPENSATION;
             steerPower = Math.max(-1.0, Math.min(1.0, steerPower));
 
@@ -123,9 +141,7 @@ public class SwerveModule {
         steerServo.setPower(steerInverted ? -steerPower : steerPower);
 
         drivePower = Math.max(-1.0, Math.min(1.0, drivePower));
-        if (driveInverted) {
-            drivePower *= -1.0;
-        }
+        if (driveInverted) drivePower *= -1.0;
         driveMotor.setPower(drivePower);
     }
 
@@ -141,7 +157,8 @@ public class SwerveModule {
     public void addTelemetry(Telemetry telemetry) {
         double current = getSteeringAngle();
         double target = desiredState.angle.getRadians();
-        telemetry.addData(moduleName, "%.0f° → %.0f°", Math.toDegrees(current), Math.toDegrees(target));
-        telemetry.addData("state", getState());
+        double err = Math.toDegrees(MathUtils.shortestAngularDistance(current, target));
+        telemetry.addData(moduleName, "%.1f° → %.1f° (err: %.1f°)",
+                Math.toDegrees(current), Math.toDegrees(target), err);
     }
 }
