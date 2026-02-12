@@ -2,31 +2,17 @@ package org.firstinspires.ftc.teamcode.Hardware;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.hardware.Servo;
 
 public class OuttakeHardware {
-    private static final String Wheel_1 = "w1";
-    private static final String Wheel_2 = "w2";
-    private static final String Ramp_servo = "rs";
+    private static final String turretMotorName = "w1";
 
-    public final DcMotorEx WheelMotor1;
-    public final DcMotorEx WheelMotor2;
-    public Servo RampServo;
+    public final DcMotorEx TurretMotor;
 
     public OuttakeHardware(HardwareMap hardwareMap) {
-        WheelMotor1 = hardwareMap.get(DcMotorEx.class, Wheel_1);
-        WheelMotor2 = hardwareMap.get(DcMotorEx.class, Wheel_2);
-        RampServo = hardwareMap.get(Servo.class, Ramp_servo);
-
-        WheelMotor1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        WheelMotor2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        WheelMotor2.setDirection(DcMotorSimple.Direction.REVERSE);
-
-        WheelMotor1.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        WheelMotor2.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        WheelMotor1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        WheelMotor2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        TurretMotor = hardwareMap.get(DcMotorEx.class, turretMotorName);
+        TurretMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        TurretMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        TurretMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
     }
 }

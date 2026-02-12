@@ -3,13 +3,7 @@ package org.firstinspires.ftc.teamcode.Constants;
 import com.acmerobotics.dashboard.config.Config;
 
 @Config
-
 public class OuttakeConstants {
-    public static final double RAMP_MAX = 355;
-    public static final double RAMP_MIN = 0;
-    public static final double RAMP_IDLE = 92.5;
-    public static final double RAMP_SHOOT = 127.5;
-
     public static final double MAX_MOTOR_RPM = 6000.0;
     public static final double MOTOR_TICKS_PER_REV = 28.0;
 
@@ -23,5 +17,4 @@ public class OuttakeConstants {
 
     public static final double RPM_TOLERANCE = 15.0;
     public static final double MIN_POWER = 0.05;
-
 }
