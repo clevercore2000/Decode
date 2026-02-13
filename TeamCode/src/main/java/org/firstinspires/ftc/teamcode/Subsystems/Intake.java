@@ -10,10 +10,11 @@ public class Intake {
     }
 
     public void Start(double power) {
-        hardware.intakeHardware.IntakeMotor.setPower(-power);
+        hardware.intakeHardware.IntakeMotor.setPower(power);
     }
 
     public void Stop() {
         hardware.intakeHardware.IntakeMotor.setPower(0);
     }
 }
+

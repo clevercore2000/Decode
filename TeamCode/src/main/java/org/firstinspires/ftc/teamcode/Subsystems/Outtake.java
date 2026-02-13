@@ -8,6 +8,7 @@ import org.firstinspires.ftc.teamcode.Hardware.Hardware;
 public class Outtake {
 
     private final DcMotorEx turretMotor;
+    private final DcMotorEx turretMotor2;
     private final PIDController pidController;
 
     private double targetRPM = 0;
@@ -17,6 +18,7 @@ public class Outtake {
 
     public Outtake(Hardware hardware) {
         this.turretMotor = hardware.outtakeHardware.TurretMotor;
+        this.turretMotor2 = hardware.outtakeHardware.TurretMotor2;
         pidController = new PIDController(
                 OuttakeConstants.VELOCITY_P,
                 OuttakeConstants.VELOCITY_I,
@@ -32,6 +34,7 @@ public class Outtake {
     public void update() {
         if (!isActive) {
             turretMotor.setPower(0);
+            turretMotor2.setPower(0);
             motorPower = 0;
             currentRPM = 0;
             return;
@@ -47,13 +50,15 @@ public class Outtake {
         if (motorPower > 0 && motorPower < OuttakeConstants.MIN_POWER) {
             motorPower = OuttakeConstants.MIN_POWER;
         }
-        turretMotor.setPower(-motorPower);
+        turretMotor.setPower(motorPower);
+        turretMotor2.setPower(motorPower);
     }
 
     public void stop() {
         isActive = false;
         targetRPM = 0;
         turretMotor.setPower(0);
+        turretMotor2.setPower(0);
     }
 
     public boolean isAtTargetSpeed() {

@@ -2,53 +2,52 @@ package org.firstinspires.ftc.teamcode.Subsystems;
 
 import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.util.ElapsedTime;
+
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
 import org.firstinspires.ftc.teamcode.Constants.OuttakeConstants;
 import org.firstinspires.ftc.teamcode.Constants.SorterConstants;
 import org.firstinspires.ftc.teamcode.Hardware.Hardware;
+import org.firstinspires.ftc.teamcode.Hardware.ServoCfg;
 
 public class Sorter {
 
     public enum BallColor { GREEN, PURPLE, EMPTY }
 
-    public enum Motif {
-        GPP(new BallColor[]{BallColor.GREEN, BallColor.PURPLE, BallColor.PURPLE}),
-        PGP(new BallColor[]{BallColor.PURPLE, BallColor.GREEN, BallColor.PURPLE}),
-        PPG(new BallColor[]{BallColor.PURPLE, BallColor.PURPLE, BallColor.GREEN});
-
-        public final BallColor[] sequence;
-        Motif(BallColor[] sequence) { this.sequence = sequence; }
-    }
-
-    public enum ShootState { IDLE, ROTATING, KICKING, NEXT, DONE }
+    public enum ShootState { IDLE, SPIN_UP, ROTATING, KICKING, RETRACTING, COOLDOWN }
 
     private final DcMotorEx drumMotor;
-    private final Servo kickServo;
+    private final ServoCfg kickServo;
     private final ColorSensor colorSensor;
+    private final DistanceSensor distanceSensor;
     private final PIDController positionPID;
     private final Outtake outtake;
 
     private final BallColor[] slots = {BallColor.EMPTY, BallColor.EMPTY, BallColor.EMPTY};
     private int ballCount = 0;
-    private int currentSlotAtTop = 0;
-    private Motif motif = Motif.GPP;
+    private int slotAtIntake = 0;
+    private int greenFireIndex = 0; // 0=green fires 1st, 1=2nd, 2=3rd
 
     private ShootState shootState = ShootState.IDLE;
     private final int[] shootOrder = new int[3];
     private int shootCount = 0;
     private int shootIndex = 0;
-    private final ElapsedTime stateTimer = new ElapsedTime();
 
     private boolean ballWasPresent = false;
+    private int detectionCount = 0; // sustained reading counter
+    private int detectedR, detectedG, detectedB; // accumulated color from first detection
     private double targetPosition = 0;
+    private final ElapsedTime cooldownTimer = new ElapsedTime();
     private int lastR, lastG, lastB, lastTotal;
+    private double lastDistance;
 
     public Sorter(Hardware hardware, Outtake outtake) {
         this.drumMotor = hardware.sorterHardware.SorterMotor;
         this.kickServo = hardware.sorterHardware.KickServo;
         this.colorSensor = hardware.sorterHardware.ColorSensor;
+        this.distanceSensor = hardware.sorterHardware.DistanceSensor;
         this.outtake = outtake;
 
         positionPID = new PIDController(
@@ -56,42 +55,62 @@ public class Sorter {
                 SorterConstants.POSITION_I,
                 SorterConstants.POSITION_D
         );
-        kickServo.setPosition(SorterConstants.RETRACT_POSITION);
+        kickServo.moveTo(SorterConstants.RETRACT_POSITION);
     }
 
-    // 21=GPP, 22=PGP, 23=PPG
+    // 21=green 1st, 22=green 2nd, 23=green 3rd
     public void setMotif(int aprilTagId) {
         switch (aprilTagId) {
-            case 22: motif = Motif.PGP; break;
-            case 23: motif = Motif.PPG; break;
-            default: motif = Motif.GPP; break;
+            case 22: greenFireIndex = 1; break;
+            case 23: greenFireIndex = 2; break;
+            default: greenFireIndex = 0; break;
         }
     }
 
     public void checkIntake() {
         if (ballCount >= 3) return;
 
-        int r = colorSensor.red();
-        int g = colorSensor.green();
-        int b = colorSensor.blue();
-        int total = r + g + b;
-        lastR = r; lastG = g; lastB = b; lastTotal = total;
-        boolean ballPresent = total > SorterConstants.DETECTION_THRESHOLD;
+        lastR = colorSensor.red();
+        lastG = colorSensor.green();
+        lastB = colorSensor.blue();
+        lastTotal = lastR + lastG + lastB;
+        lastDistance = distanceSensor.getDistance(DistanceUnit.CM);
 
-        if (ballPresent && !ballWasPresent) {
-            double greenRatio = (double) g / total;
+        boolean ballPresent = lastDistance < SorterConstants.DISTANCE_THRESHOLD
+                && lastTotal > SorterConstants.DETECTION_THRESHOLD;
+
+        if (ballPresent) {
+            if (detectionCount == 0) {
+                // First frame: save color
+                detectedR = lastR;
+                detectedG = lastG;
+                detectedB = lastB;
+            }
+            detectionCount++;
+        } else {
+            detectionCount = 0;
+        }
+
+        // Only register ball after sustained detection
+        if (detectionCount == SorterConstants.DETECTION_FRAMES && !ballWasPresent) {
+            int total = detectedR + detectedG + detectedB;
+            double greenRatio = (double) detectedG / total;
             BallColor detected = (greenRatio > SorterConstants.GREEN_RATIO_THRESHOLD)
                     ? BallColor.GREEN : BallColor.PURPLE;
 
-            slots[currentSlotAtTop] = detected;
+            slots[slotAtIntake] = detected;
             ballCount++;
 
             if (ballCount < 3) {
-                currentSlotAtTop = (currentSlotAtTop + 1) % 3;
-                targetPosition = SorterConstants.SLOT_POSITIONS[currentSlotAtTop];
+                slotAtIntake = (slotAtIntake + 1) % 3;
+                targetPosition = getIntakePos(slotAtIntake);
             }
+            ballWasPresent = true;
         }
-        ballWasPresent = ballPresent;
+
+        if (!ballPresent) {
+            ballWasPresent = false;
+        }
     }
 
     public void startShootSequence() {
@@ -101,58 +120,97 @@ public class Sorter {
         if (shootCount == 0) return;
         shootIndex = 0;
         outtake.setTargetRPM(OuttakeConstants.TARGET_RPM);
-        targetPosition = SorterConstants.SLOT_POSITIONS[shootOrder[shootIndex]];
-        shootState = ShootState.ROTATING;
-        stateTimer.reset();
+        shootState = ShootState.SPIN_UP;
     }
 
     public void update() {
+        kickServo.execute();
+
         switch (shootState) {
             case IDLE:
-            case DONE:
-                double idlePos = drumMotor.getCurrentPosition();
-                if (Math.abs(targetPosition - idlePos) > SorterConstants.POSITION_TOLERANCE) {
-                    drumMotor.setPower(positionPID.calculate(targetPosition, idlePos));
-                } else {
-                    drumMotor.setPower(0);
+                driveDrumToTarget();
+                break;
+
+            case SPIN_UP:
+                if (outtake.isAtTargetSpeed()) {
+                    targetPosition = getShootPos(shootOrder[shootIndex]);
+                    shootState = ShootState.ROTATING;
                 }
                 break;
 
             case ROTATING:
+                if (kickServo.notReady()) break;
                 double currentPos = drumMotor.getCurrentPosition();
-                drumMotor.setPower(positionPID.calculate(targetPosition, currentPos));
+                double power = positionPID.calculate(targetPosition, currentPos);
+                power = Math.max(-SorterConstants.DRUM_MAX_POWER, Math.min(power, SorterConstants.DRUM_MAX_POWER));
+                drumMotor.setPower(power);
 
-                if (Math.abs(targetPosition - currentPos) < SorterConstants.POSITION_TOLERANCE
-                        && outtake.isAtTargetSpeed()) {
+                if (Math.abs(targetPosition - currentPos) < SorterConstants.POSITION_TOLERANCE) {
                     drumMotor.setPower(0);
-                    kickServo.setPosition(SorterConstants.KICK_POSITION);
-                    stateTimer.reset();
+                    kickServo.moveTo(SorterConstants.KICK_POSITION);
                     shootState = ShootState.KICKING;
                 }
                 break;
 
             case KICKING:
-                double elapsed = stateTimer.milliseconds();
-                if (elapsed >= SorterConstants.KICK_DELAY_MS) {
-                    kickServo.setPosition(SorterConstants.RETRACT_POSITION);
-                }
-                if (elapsed >= SorterConstants.KICK_DELAY_MS + SorterConstants.FIRE_DELAY_MS) {
-                    slots[shootOrder[shootIndex]] = BallColor.EMPTY;
-                    ballCount--;
-                    shootIndex++;
-                    shootState = ShootState.NEXT;
-                }
+                if (kickServo.notReady()) break;
+                kickServo.moveTo(SorterConstants.RETRACT_POSITION);
+                shootState = ShootState.RETRACTING;
                 break;
 
-            case NEXT:
+            case RETRACTING:
+                if (kickServo.notReady()) break;
+                slots[shootOrder[shootIndex]] = BallColor.EMPTY;
+                ballCount--;
+                shootIndex++;
+
                 if (shootIndex >= shootCount) {
-                    outtake.stop();
-                    shootState = ShootState.DONE;
+                    cooldownTimer.reset();
+                    shootState = ShootState.COOLDOWN;
                 } else {
-                    targetPosition = SorterConstants.SLOT_POSITIONS[shootOrder[shootIndex]];
+                    targetPosition = getShootPos(shootOrder[shootIndex]);
                     shootState = ShootState.ROTATING;
                 }
                 break;
+
+            case COOLDOWN:
+                if (cooldownTimer.milliseconds() >= SorterConstants.SHOOT_COOLDOWN_MS) {
+                    outtake.stop();
+                    slotAtIntake = 0;
+                    ballCount = 0;
+                    targetPosition = getIntakePos(slotAtIntake);
+                    shootState = ShootState.IDLE;
+                }
+                break;
+        }
+    }
+
+    private void driveDrumToTarget() {
+        double pos = drumMotor.getCurrentPosition();
+        if (Math.abs(targetPosition - pos) > SorterConstants.POSITION_TOLERANCE) {
+            double power = positionPID.calculate(targetPosition, pos);
+            power = Math.max(-SorterConstants.DRUM_MAX_POWER, Math.min(power, SorterConstants.DRUM_MAX_POWER));
+            drumMotor.setPower(power);
+        } else {
+            drumMotor.setPower(0);
+        }
+    }
+
+    private double getIntakePos(int slot) {
+        switch (slot) {
+            case 0: return SorterConstants.INTAKE_POS_0;
+            case 1: return SorterConstants.INTAKE_POS_1;
+            case 2: return SorterConstants.INTAKE_POS_2;
+            default: return 0;
+        }
+    }
+
+    private double getShootPos(int slot) {
+        switch (slot) {
+            case 0: return SorterConstants.SHOOT_POS_0;
+            case 1: return SorterConstants.SHOOT_POS_1;
+            case 2: return SorterConstants.SHOOT_POS_2;
+            default: return 0;
         }
     }
 
@@ -160,23 +218,24 @@ public class Sorter {
         shootCount = 0;
 
         if (ballCount == 3) {
-            // Full drum: match motif sequence to slots
-            boolean[] used = new boolean[3];
+            int greenSlot = -1;
             for (int i = 0; i < 3; i++) {
-                BallColor needed = motif.sequence[i];
-                for (int j = 0; j < 3; j++) {
-                    if (!used[j] && slots[j] == needed) {
-                        shootOrder[shootCount++] = j;
-                        used[j] = true;
-                        break;
-                    }
+                if (slots[i] == BallColor.GREEN) { greenSlot = i; break; }
+            }
+            int purpleIdx = 0;
+            for (int i = 0; i < 3; i++) {
+                if (i == greenFireIndex) {
+                    shootOrder[i] = greenSlot;
+                } else {
+                    while (purpleIdx == greenSlot) purpleIdx++;
+                    shootOrder[i] = purpleIdx++;
                 }
             }
+            shootCount = 3;
         } else {
-            // Partial drum: clockwise order, skip empties
-            for (int j = 0; j < 3; j++) {
-                if (slots[j] != BallColor.EMPTY) {
-                    shootOrder[shootCount++] = j;
+            for (int i = 0; i < 3; i++) {
+                if (slots[i] != BallColor.EMPTY) {
+                    shootOrder[shootCount++] = i;
                 }
             }
         }
@@ -186,34 +245,37 @@ public class Sorter {
         shootState = ShootState.IDLE;
         shootIndex = 0;
         drumMotor.setPower(0);
-        kickServo.setPosition(SorterConstants.RETRACT_POSITION);
+        kickServo.moveTo(SorterConstants.RETRACT_POSITION);
     }
 
     public void debugNextSlot() {
-        currentSlotAtTop = (currentSlotAtTop + 1) % 3;
-        targetPosition = SorterConstants.SLOT_POSITIONS[currentSlotAtTop];
+        slotAtIntake = (slotAtIntake + 1) % 3;
+        targetPosition = getIntakePos(slotAtIntake);
     }
 
     public void debugAddBall(BallColor color) {
         if (ballCount >= 3) return;
-        slots[currentSlotAtTop] = color;
+        slots[slotAtIntake] = color;
         ballCount++;
         if (ballCount < 3) {
-            currentSlotAtTop = (currentSlotAtTop + 1) % 3;
-            targetPosition = SorterConstants.SLOT_POSITIONS[currentSlotAtTop];
+            slotAtIntake = (slotAtIntake + 1) % 3;
+            targetPosition = getIntakePos(slotAtIntake);
         }
     }
 
     public ShootState getShootState() { return shootState; }
     public BallColor[] getSlots() { return slots; }
     public int getBallCount() { return ballCount; }
-    public Motif getMotif() { return motif; }
-    public boolean isSequenceComplete() { return shootState == ShootState.DONE; }
-    public boolean isIdle() { return shootState == ShootState.IDLE || shootState == ShootState.DONE; }
-    public String getSensorString() {
-        double greenRatio = lastTotal > 0 ? (double) lastG / lastTotal : 0;
-        return String.format("R%d G%d B%d T%d gR%.2f", lastR, lastG, lastB, lastTotal, greenRatio);
-    }
+    public int getGreenFireIndex() { return greenFireIndex; }
+    public boolean isIdle() { return shootState == ShootState.IDLE; }
+    public double getTargetPosition() { return targetPosition; }
+    public int getColorR() { return lastR; }
+    public int getColorG() { return lastG; }
+    public int getColorB() { return lastB; }
+    public int getColorTotal() { return lastTotal; }
+    public double getDistance() { return lastDistance; }
+    public int getDetectionCount() { return detectionCount; }
+    public int getDrumEncoder() { return drumMotor.getCurrentPosition(); }
 
     public String getSlotsString() {
         StringBuilder sb = new StringBuilder("[");

@@ -32,7 +32,7 @@ public class SwerveTeleop extends LinearOpMode {
         sorter.setMotif(MotifConfig.motifCode);
 
         telemetry.addLine("Swerve Drive Ready");
-        telemetry.addData("Motif", sorter.getMotif().name());
+        telemetry.addData("Green Fire Index", sorter.getGreenFireIndex());
         telemetry.update();
 
         waitForStart();
@@ -49,7 +49,6 @@ public class SwerveTeleop extends LinearOpMode {
             boolean crossPressed = gamepad2.cross && !lastCross;
             lastCross = gamepad2.cross;
             if (crossPressed && sorter.isIdle()) sorter.startShootSequence();
-            if (sorter.isSequenceComplete()) sorter.resetSequence();
 
             if (intakeOn) sorter.checkIntake();
             sorter.update();
@@ -66,12 +65,18 @@ public class SwerveTeleop extends LinearOpMode {
             drive.drive(forward, strafe, rotation);
 
             telemetry.addData("Fwd/Str/Rot", "%.1f / %.1f / %.1f", forward, strafe, rotation);
-            telemetry.addData("Motif", sorter.getMotif().name());
+            telemetry.addData("Green Fire Index", sorter.getGreenFireIndex());
             telemetry.addData("Slots", sorter.getSlotsString());
             telemetry.addData("Balls", sorter.getBallCount());
             telemetry.addData("Sorter", sorter.getShootState().name());
-            telemetry.addData("Sensor", sorter.getSensorString());
+            telemetry.addData("Drum Target", "%.1f", sorter.getTargetPosition());
+            telemetry.addData("Drum Encoder", sorter.getDrumEncoder());
+            telemetry.addData("Kick Ready", sorter.isIdle());
             telemetry.addData("Turret RPM", "%.0f / %.0f", outtake.getCurrentRPM(), outtake.getTargetRPM());
+            telemetry.addData("Color R/G/B", "%d / %d / %d", sorter.getColorR(), sorter.getColorG(), sorter.getColorB());
+            telemetry.addData("Color Total", sorter.getColorTotal());
+            telemetry.addData("Distance (cm)", "%.1f", sorter.getDistance());
+            telemetry.addData("Det Count", sorter.getDetectionCount());
             drive.log(telemetry);
             telemetry.update();
         }
