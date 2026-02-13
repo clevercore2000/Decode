@@ -70,6 +70,7 @@ public class SwerveTeleop extends LinearOpMode {
             telemetry.addData("Slots", sorter.getSlotsString());
             telemetry.addData("Balls", sorter.getBallCount());
             telemetry.addData("Sorter", sorter.getShootState().name());
+            telemetry.addData("Sensor", sorter.getSensorString());
             telemetry.addData("Turret RPM", "%.0f / %.0f", outtake.getCurrentRPM(), outtake.getTargetRPM());
             drive.log(telemetry);
             telemetry.update();

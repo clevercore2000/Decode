@@ -43,6 +43,7 @@ public class Sorter {
 
     private boolean ballWasPresent = false;
     private double targetPosition = 0;
+    private int lastR, lastG, lastB, lastTotal;
 
     public Sorter(Hardware hardware, Outtake outtake) {
         this.drumMotor = hardware.sorterHardware.SorterMotor;
@@ -74,6 +75,7 @@ public class Sorter {
         int g = colorSensor.green();
         int b = colorSensor.blue();
         int total = r + g + b;
+        lastR = r; lastG = g; lastB = b; lastTotal = total;
         boolean ballPresent = total > SorterConstants.DETECTION_THRESHOLD;
 
         if (ballPresent && !ballWasPresent) {
@@ -208,6 +210,10 @@ public class Sorter {
     public Motif getMotif() { return motif; }
     public boolean isSequenceComplete() { return shootState == ShootState.DONE; }
     public boolean isIdle() { return shootState == ShootState.IDLE || shootState == ShootState.DONE; }
+    public String getSensorString() {
+        double greenRatio = lastTotal > 0 ? (double) lastG / lastTotal : 0;
+        return String.format("R%d G%d B%d T%d gR%.2f", lastR, lastG, lastB, lastTotal, greenRatio);
+    }
 
     public String getSlotsString() {
         StringBuilder sb = new StringBuilder("[");

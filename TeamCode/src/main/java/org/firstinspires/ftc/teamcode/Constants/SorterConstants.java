@@ -13,8 +13,8 @@ public class SorterConstants {
     public static double POSITION_D = 0.00;
     public static final double POSITION_TOLERANCE = 10.0;
 
-    public static final double KICK_POSITION = 0.8;
-    public static final double RETRACT_POSITION = 0.2;
+    public static final double KICK_POSITION = 1;
+    public static final double RETRACT_POSITION = 0;
     public static final long KICK_DELAY_MS = 300;
     public static final long FIRE_DELAY_MS = 500;
 
