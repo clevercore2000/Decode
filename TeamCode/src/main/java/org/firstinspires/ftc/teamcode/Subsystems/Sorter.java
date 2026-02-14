@@ -43,6 +43,7 @@ public class Sorter {
     private int lastR, lastG, lastB, lastTotal;
     private double lastDistance;
 
+
     public Sorter(Hardware hardware, Outtake outtake) {
         this.drumMotor = hardware.sorterHardware.SorterMotor;
         this.kickServo = hardware.sorterHardware.KickServo;
@@ -56,6 +57,17 @@ public class Sorter {
                 SorterConstants.POSITION_D
         );
         kickServo.moveTo(SorterConstants.RETRACT_POSITION);
+
+        // Initial Preload State: Slot 0 = Green, 1 & 2 = Purple
+        slots[0] = BallColor.GREEN;
+        slots[1] = BallColor.PURPLE;
+        slots[2] = BallColor.PURPLE;
+        ballCount = 3;
+
+        slotAtIntake = 0;
+        targetPosition = getIntakePos(slotAtIntake);
+
+        colorSensor.enableLed(false); // Start with light off
     }
 
     // 21=green 1st, 22=green 2nd, 23=green 3rd
@@ -68,8 +80,26 @@ public class Sorter {
     }
 
     public void checkIntake() {
-        if (ballCount >= 3) return;
+        // Logic Gate: Disable sensing if we are full or shooting
+        if (ballCount >= 3 || shootState != ShootState.IDLE) {
+            lastR = 0; lastG = 0; lastB = 0; lastTotal = 0;
+            lastDistance = 999.0;
+            detectionCount = 0;
+            return;
+        }
 
+        double currentPos = drumMotor.getCurrentPosition();
+        double error = Math.abs(targetPosition - currentPos);
+
+        // Software Blinding during drum movement
+        if (error > SorterConstants.LIGHT_TOGGLE_THRESHOLD) {
+            lastR = 0; lastG = 0; lastB = 0; lastTotal = 0;
+            lastDistance = 999.0;
+            detectionCount = 0;
+            return;
+        }
+
+        // Hardware Reading
         lastR = colorSensor.red();
         lastG = colorSensor.green();
         lastB = colorSensor.blue();
@@ -81,26 +111,21 @@ public class Sorter {
 
         if (ballPresent) {
             if (detectionCount == 0) {
-                // First frame: save color
-                detectedR = lastR;
-                detectedG = lastG;
-                detectedB = lastB;
+                detectedR = lastR; detectedG = lastG; detectedB = lastB;
             }
             detectionCount++;
         } else {
             detectionCount = 0;
         }
 
-        // Only register ball after sustained detection
-        if (detectionCount == SorterConstants.DETECTION_FRAMES && !ballWasPresent) {
+        if (detectionCount >= SorterConstants.DETECTION_FRAMES && !ballWasPresent) {
             int total = detectedR + detectedG + detectedB;
-            double greenRatio = (double) detectedG / total;
-            BallColor detected = (greenRatio > SorterConstants.GREEN_RATIO_THRESHOLD)
+            double greenRatio = (double) detectedG / (total == 0 ? 1 : total);
+
+            slots[slotAtIntake] = (greenRatio > SorterConstants.GREEN_RATIO_THRESHOLD)
                     ? BallColor.GREEN : BallColor.PURPLE;
 
-            slots[slotAtIntake] = detected;
             ballCount++;
-
             if (ballCount < 3) {
                 slotAtIntake = (slotAtIntake + 1) % 3;
                 targetPosition = getIntakePos(slotAtIntake);
@@ -108,23 +133,20 @@ public class Sorter {
             ballWasPresent = true;
         }
 
-        if (!ballPresent) {
-            ballWasPresent = false;
-        }
+        if (!ballPresent) ballWasPresent = false;
     }
 
     public void startShootSequence() {
         if (shootState != ShootState.IDLE) return;
 
         computeShootOrder();
-        if (shootCount == 0) return;
         shootIndex = 0;
         outtake.setTargetRPM(OuttakeConstants.TARGET_RPM);
         shootState = ShootState.SPIN_UP;
     }
-
     public void update() {
         kickServo.execute();
+        double currentPos = drumMotor.getCurrentPosition();
 
         switch (shootState) {
             case IDLE:
@@ -140,10 +162,9 @@ public class Sorter {
 
             case ROTATING:
                 if (kickServo.notReady()) break;
-                double currentPos = drumMotor.getCurrentPosition();
-                double power = positionPID.calculate(targetPosition, currentPos);
-                power = Math.max(-SorterConstants.DRUM_MAX_POWER, Math.min(power, SorterConstants.DRUM_MAX_POWER));
-                drumMotor.setPower(power);
+                double rotPower = positionPID.calculate(targetPosition, currentPos);
+                rotPower = Math.max(-SorterConstants.DRUM_MAX_POWER, Math.min(rotPower, SorterConstants.DRUM_MAX_POWER));
+                drumMotor.setPower(rotPower);
 
                 if (Math.abs(targetPosition - currentPos) < SorterConstants.POSITION_TOLERANCE) {
                     drumMotor.setPower(0);
@@ -161,7 +182,7 @@ public class Sorter {
             case RETRACTING:
                 if (kickServo.notReady()) break;
                 slots[shootOrder[shootIndex]] = BallColor.EMPTY;
-                ballCount--;
+                if (ballCount > 0) ballCount--;
                 shootIndex++;
 
                 if (shootIndex >= shootCount) {
@@ -174,17 +195,20 @@ public class Sorter {
                 break;
 
             case COOLDOWN:
-                if (cooldownTimer.milliseconds() >= SorterConstants.SHOOT_COOLDOWN_MS) {
+                if (cooldownTimer.milliseconds() >= (SorterConstants.SHOOT_COOLDOWN_MS + 500)) {
                     outtake.stop();
-                    slotAtIntake = 0;
+
+                    // Reset drum for next intake cycle
+                    for (int i = 0; i < 3; i++) slots[i] = BallColor.EMPTY;
                     ballCount = 0;
+                    slotAtIntake = 0;
+
                     targetPosition = getIntakePos(slotAtIntake);
                     shootState = ShootState.IDLE;
                 }
                 break;
         }
     }
-
     private void driveDrumToTarget() {
         double pos = drumMotor.getCurrentPosition();
         if (Math.abs(targetPosition - pos) > SorterConstants.POSITION_TOLERANCE) {
@@ -215,30 +239,23 @@ public class Sorter {
     }
 
     private void computeShootOrder() {
-        shootCount = 0;
+        int greenSlot = -1;
+        for (int i = 0; i < 3; i++) {
+            if (slots[i] == BallColor.GREEN) { greenSlot = i; break; }
+        }
 
-        if (ballCount == 3) {
-            int greenSlot = -1;
-            for (int i = 0; i < 3; i++) {
-                if (slots[i] == BallColor.GREEN) { greenSlot = i; break; }
-            }
-            int purpleIdx = 0;
-            for (int i = 0; i < 3; i++) {
-                if (i == greenFireIndex) {
-                    shootOrder[i] = greenSlot;
-                } else {
-                    while (purpleIdx == greenSlot) purpleIdx++;
-                    shootOrder[i] = purpleIdx++;
-                }
-            }
-            shootCount = 3;
-        } else {
-            for (int i = 0; i < 3; i++) {
-                if (slots[i] != BallColor.EMPTY) {
-                    shootOrder[shootCount++] = i;
-                }
+        int targetGreen = (greenSlot != -1) ? greenSlot : 0;
+        int otherIdx = 0;
+
+        for (int i = 0; i < 3; i++) {
+            if (i == greenFireIndex) {
+                shootOrder[i] = targetGreen;
+            } else {
+                while (otherIdx == targetGreen) otherIdx++;
+                shootOrder[i] = otherIdx++;
             }
         }
+        shootCount = 3;
     }
 
     public void resetSequence() {

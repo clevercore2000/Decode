@@ -13,13 +13,15 @@ public class SorterConstants {
 
     // Position (in ticks) to bring each slot to the kick servo
     public static double SHOOT_POS_0 = -537;
-    public static double SHOOT_POS_1 = -183;
+    public static double SHOOT_POS_1 = -175;
     public static double SHOOT_POS_2 = -358;
 
     public static double POSITION_P = 0.005;
     public static double POSITION_I = 0.0;
     public static double POSITION_D = 0.00;
-    public static double POSITION_TOLERANCE = 3.0;
+    public static double POSITION_TOLERANCE = 5;
+
+    public static double LIGHT_TOGGLE_THRESHOLD = 25;
     public static double DRUM_MAX_POWER = 0.3;
     public static double SHOOT_COOLDOWN_MS = 500; // keep outtake spinning after last kick
 
