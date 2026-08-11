@@ -25,11 +25,12 @@ public class SwerveCalibration extends LinearOpMode {
             blEnc = new RevThroughBoreEncoder(hardwareMap.get(DcMotorEx.class, SteeringConstants.BL_ENCODER_NAME), SteeringConstants.BL_ENCODER_SHARED);
             brEnc = new RevThroughBoreEncoder(hardwareMap.get(DcMotorEx.class, SteeringConstants.BR_ENCODER_NAME), SteeringConstants.BR_ENCODER_SHARED);
 
-            // Invert encoders to match SwerveDrive/SwerveModule logic
-            flEnc.setInverted(true);
-            frEnc.setInverted(true);
-            blEnc.setInverted(true);
-            brEnc.setInverted(true);
+            // Must match SwerveDrive exactly, or the offsets measured here are interpreted
+            // under a different sign convention by the drive that consumes them.
+            flEnc.setInverted(SteeringConstants.FL_ENCODER_INVERTED);
+            frEnc.setInverted(SteeringConstants.FR_ENCODER_INVERTED);
+            blEnc.setInverted(SteeringConstants.BL_ENCODER_INVERTED);
+            brEnc.setInverted(SteeringConstants.BR_ENCODER_INVERTED);
 
             flLimit = hardwareMap.get(DigitalChannel.class, SteeringConstants.FL_SWITCH_NAME);
             frLimit = hardwareMap.get(DigitalChannel.class, SteeringConstants.FR_SWITCH_NAME);

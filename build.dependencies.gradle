@@ -26,4 +26,8 @@ dependencies {
 
     implementation "com.bylazar:docs:1.0.5"
     implementation 'com.bylazar:fullpanels:1.0.6'
+
+    // Pedro Pathing (autonomous path following)
+    implementation 'com.pedropathing:ftc:2.0.4'
+    implementation 'com.pedropathing:telemetry:1.0.0'
 }

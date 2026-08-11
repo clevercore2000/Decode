@@ -22,20 +22,24 @@ public class SwerveDrive {
     public SwerveDrive(HardwareMap hardwareMap) {
         fl = createModule(hardwareMap, "fl",
                 SteeringConstants.FL_ENCODER_NAME, SteeringConstants.FL_ENCODER_SHARED,
-                SteeringConstants.FL_SWITCH_NAME, SteeringConstants.FL_TICK_OFFSET, 
-                false, true, false); 
+                SteeringConstants.FL_SWITCH_NAME, SteeringConstants.FL_TICK_OFFSET,
+                SteeringConstants.FL_DRIVE_INVERTED, SteeringConstants.FL_ENCODER_INVERTED,
+                SteeringConstants.FL_STEER_INVERTED);
         fr = createModule(hardwareMap, "fr",
                 SteeringConstants.FR_ENCODER_NAME, SteeringConstants.FR_ENCODER_SHARED,
                 SteeringConstants.FR_SWITCH_NAME, SteeringConstants.FR_TICK_OFFSET,
-                true, true, true);
+                SteeringConstants.FR_DRIVE_INVERTED, SteeringConstants.FR_ENCODER_INVERTED,
+                SteeringConstants.FR_STEER_INVERTED);
         bl = createModule(hardwareMap, "bl",
                 SteeringConstants.BL_ENCODER_NAME, SteeringConstants.BL_ENCODER_SHARED,
-                SteeringConstants.BL_SWITCH_NAME, SteeringConstants.BL_TICK_OFFSET, 
-                false, false, false);
+                SteeringConstants.BL_SWITCH_NAME, SteeringConstants.BL_TICK_OFFSET,
+                SteeringConstants.BL_DRIVE_INVERTED, SteeringConstants.BL_ENCODER_INVERTED,
+                SteeringConstants.BL_STEER_INVERTED);
         br = createModule(hardwareMap, "br",
                 SteeringConstants.BR_ENCODER_NAME, SteeringConstants.BR_ENCODER_SHARED,
-                SteeringConstants.BR_SWITCH_NAME, SteeringConstants.BR_TICK_OFFSET, 
-                true, true, true);
+                SteeringConstants.BR_SWITCH_NAME, SteeringConstants.BR_TICK_OFFSET,
+                SteeringConstants.BR_DRIVE_INVERTED, SteeringConstants.BR_ENCODER_INVERTED,
+                SteeringConstants.BR_STEER_INVERTED);
 
         // FTCLib kinematics: +x = forward, +y = left
         double halfWB = DriveConstants.WHEELBASE_METERS / 2.0;
@@ -77,9 +81,24 @@ public class SwerveDrive {
     }
 
     /**
-     * Home all 4 modules simultaneously with dual-stage homing.
+     * Home all 4 modules simultaneously with dual-stage homing. Must be called after
+     * {@code waitForStart()} — it runs while the opmode is active.
      */
     public boolean homeAllModules(LinearOpMode opMode) {
+        return homeAllModules(opMode, false);
+    }
+
+    /**
+     * Same dual-stage homing, but runnable during the init phase. Autonomous needs this:
+     * {@link #homeAllModules} gates on {@code opModeIsActive()}, which is false before start,
+     * so calling it from init would fall straight through and report success having homed
+     * nothing. Homing in init also keeps it off the 30 second autonomous clock.
+     */
+    public boolean homeAllModulesDuringInit(LinearOpMode opMode) {
+        return homeAllModules(opMode, true);
+    }
+
+    private boolean homeAllModules(LinearOpMode opMode, boolean duringInit) {
         SwerveModule[] modules = {fl, fr, bl, br};
         boolean[] done = new boolean[4];
         long startTime = System.currentTimeMillis();
@@ -93,7 +112,7 @@ public class SwerveDrive {
             }
         }
 
-        while (opMode.opModeIsActive()) {
+        while (duringInit ? !opMode.isStopRequested() : opMode.opModeIsActive()) {
             boolean allDone = true;
             for (int i = 0; i < 4; i++) {
                 if (done[i]) continue;
@@ -117,20 +136,114 @@ public class SwerveDrive {
     }
 
 
+    /**
+     * Aims all four modules forward and blocks until they settle there. Must be called after
+     * {@code waitForStart()}.
+     */
+    public boolean alignModulesForward(LinearOpMode opMode) {
+        return alignModulesForward(opMode, false);
+    }
+
+    /** Init-phase variant of {@link #alignModulesForward(LinearOpMode)}. */
+    public boolean alignModulesForwardDuringInit(LinearOpMode opMode) {
+        return alignModulesForward(opMode, true);
+    }
+
+    /**
+     * Runs the steering loop with zero wheel speed until every module holds 0° within
+     * {@link SteeringConstants#ALIGN_TOLERANCE_RADIANS} for {@code ALIGN_SETTLE_MS}.
+     * <p>
+     * Homing alone is not enough: {@code finishHoming()} sets the target to 0° but only
+     * {@link #update()} actuates a servo, so without this the modules sit at the limit switch
+     * and are still rotating into place when the first path applies drive power — which shows
+     * up as position error at the start of every path.
+     *
+     * @return false on timeout, meaning at least one module never settled.
+     */
+    private boolean alignModulesForward(LinearOpMode opMode, boolean duringInit) {
+        SwerveModule[] modules = {fl, fr, bl, br};
+        long start = System.currentTimeMillis();
+        long settledSince = -1;
+
+        while (duringInit ? !opMode.isStopRequested() : opMode.opModeIsActive()) {
+            for (SwerveModule m : modules) m.setTarget(0, 0);
+            update();
+
+            boolean allWithin = true;
+            for (SwerveModule m : modules) {
+                if (Math.abs(m.getSteerErrorRad()) > SteeringConstants.ALIGN_TOLERANCE_RADIANS) {
+                    allWithin = false;
+                    break;
+                }
+            }
+
+            long elapsed = System.currentTimeMillis() - start;
+
+            if (allWithin) {
+                // Require the tolerance to hold for a dwell rather than accepting the first
+                // sample inside it, which a module can satisfy while still swinging through.
+                if (settledSince < 0) settledSince = System.currentTimeMillis();
+                boolean settled = System.currentTimeMillis() - settledSince >= SteeringConstants.ALIGN_SETTLE_MS;
+                // ALIGN_HOLD_MS is a floor on the whole operation, not just the settle window:
+                // it keeps driving the modules onto 0° for the full period so the result is the
+                // same on carpet as it is with the wheels off the ground.
+                if (settled && elapsed >= SteeringConstants.ALIGN_HOLD_MS) {
+                    return true;
+                }
+            } else {
+                settledSince = -1;
+            }
+
+            if (System.currentTimeMillis() - start > SteeringConstants.ALIGN_TIMEOUT_MS) {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Holds all modules at 0° with zero drive power. Call every loop while waiting to start a
+     * path — it keeps the PD loop live so the modules stay where {@link #alignModulesForward}
+     * put them instead of drifting, and leaves the servos parked inside the PD deadband.
+     */
+    public void holdForward() {
+        fl.setTarget(0, 0);
+        fr.setTarget(0, 0);
+        bl.setTarget(0, 0);
+        br.setTarget(0, 0);
+        update();
+    }
+
     public SwerveDriveKinematics getKinematics() {
         return kinematics;
     }
 
+    /**
+     * Driver-facing entry point. Applies a stick deadband — below it the wheels hold their
+     * current azimuth and coast — then defers to {@link #setChassisSpeeds}.
+     * <p>
+     * Autonomous must not use this: a path follower emits arbitrarily small corrections, and
+     * the deadband would discard exactly the ones that keep the robot on the path.
+     */
     public void drive(double fwd, double str, double rot) {
-        SwerveModule[] modules = {fl, fr, bl, br};
-
         if (Math.abs(fwd) < 0.01 && Math.abs(str) < 0.01 && Math.abs(rot) < 0.01) {
-            for (SwerveModule m : modules) m.setTarget(m.getTargetAngle(), 0);
+            for (SwerveModule m : new SwerveModule[]{fl, fr, bl, br}) {
+                m.setTarget(m.getTargetAngle(), 0);
+            }
             return;
         }
+        setChassisSpeeds(new ChassisSpeeds(fwd, str, rot));
+    }
 
-        // FTCLib uses vx (forward), vy (left), omega (CCW positive)
-        ChassisSpeeds speeds = new ChassisSpeeds(fwd, str, rot);
+    /**
+     * Commands a robot-relative chassis motion with no deadband: vx forward, vy left,
+     * omega CCW-positive. Wheel speeds are normalised so the fastest module sits at 1.0, so
+     * the inputs are treated as a direction plus a relative magnitude rather than true m/s.
+     * <p>
+     * Call {@link #update()} afterwards to actually drive the hardware.
+     */
+    public void setChassisSpeeds(ChassisSpeeds speeds) {
+        SwerveModule[] modules = {fl, fr, bl, br};
         SwerveModuleState[] states = kinematics.toSwerveModuleStates(speeds);
         SwerveDriveKinematics.normalizeWheelSpeeds(states, 1.0);
 

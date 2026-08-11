@@ -1,16 +1,14 @@
 package org.firstinspires.ftc.teamcode.Subsystems;
 
-import com.qualcomm.robotcore.hardware.DcMotorEx;
-
 import org.firstinspires.ftc.teamcode.Constants.OuttakeConstants;
 import org.firstinspires.ftc.teamcode.Hardware.Hardware;
+import org.firstinspires.ftc.teamcode.Hardware.OuttakeHardware;
 import org.firstinspires.ftc.teamcode.Hardware.ServoCfg;
 
 public class Outtake {
 
     private Hardware hardware;
-    private DcMotorEx motor1;
-    private DcMotorEx motor2;
+    private OuttakeHardware outtakeHardware;
     private ServoCfg ramp;
 
     private enum RampState { IDLE, SHOOT }
@@ -23,8 +21,7 @@ public class Outtake {
 
     public Outtake(Hardware hardware) {
         this.hardware = hardware;
-        this.motor1 = hardware.outtakeHardware.WheelMotor1;
-        this.motor2 = hardware.outtakeHardware.WheelMotor2;
+        this.outtakeHardware = hardware.outtakeHardware;
 
         ramp = new ServoCfg(hardware.outtakeHardware.RampServo, 2);
         ramp.setRange(OuttakeConstants.RAMP_MIN, OuttakeConstants.RAMP_MAX);
@@ -37,8 +34,7 @@ public class Outtake {
 
     public void update() {
         if (!isActive) {
-            motor1.setPower(0);
-            motor2.setPower(0);
+            outtakeHardware.setWheelPower(0);
             motorPower = 0;
             ramp.execute();
             return;
@@ -53,8 +49,7 @@ public class Outtake {
             motorPower = OuttakeConstants.MIN_POWER;
         }
 
-        motor1.setPower(motorPower);
-        motor2.setPower(motorPower);
+        outtakeHardware.setWheelPower(motorPower);
 
         ramp.execute();
     }
@@ -77,8 +72,7 @@ public class Outtake {
     public void stop() {
         isActive = false;
         targetRPM = 0;
-        motor1.setPower(0);
-        motor2.setPower(0);
+        outtakeHardware.setWheelPower(0);
         rampState = RampState.IDLE;
         ramp.moveTo(OuttakeConstants.RAMP_IDLE);
     }

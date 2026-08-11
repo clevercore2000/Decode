@@ -31,6 +31,7 @@ public class SwerveModule {
     private long lastTime = System.nanoTime();
     private boolean homed = false;
     private boolean wheelFlipped = false;
+    private double lastSteerError = 0.0;
 
     private HomingStage homingStage = HomingStage.IDLE;
     private long backoffStartTime;
@@ -89,6 +90,7 @@ public class SwerveModule {
 
         // Shortest path error in radians (Guaranteed <= PI/2)
         double steerError = optimized.angle.minus(currentRotation).getRadians();
+        lastSteerError = steerError;
 
         // PD Controller
         long now = System.nanoTime();
@@ -116,6 +118,15 @@ public class SwerveModule {
         if (driveInverted) drivePower *= -1;
         driveMotor.setPower(drivePower);
     }
+
+    /**
+     * Steering error the PD loop acted on during the last {@link #update()}, in radians.
+     * <p>
+     * This is the post-{@code optimize()} error, so a module sitting 180° from its target reads
+     * ~0 — correct, because at that azimuth the wheel simply drives in reverse. Stale until
+     * {@code update()} has run at least once since homing.
+     */
+    public double getSteerErrorRad() { return lastSteerError; }
 
     public double getAngle() { return encoder.getWheelAngleRad(); }
     public int getRawTicks() { return encoder.getRawTicks(); }

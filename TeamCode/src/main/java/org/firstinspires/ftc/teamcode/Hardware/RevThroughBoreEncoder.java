@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.Hardware;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
 import org.firstinspires.ftc.teamcode.Constants.SteeringConstants;
 
@@ -18,6 +19,12 @@ public class RevThroughBoreEncoder {
 
     public RevThroughBoreEncoder(DcMotorEx encoderMotor, boolean sharedPort) {
         this.encoderMotor = encoderMotor;
+        // Pin the direction FORWARD so the tick sign depends only on setInverted() below, never
+        // on whether some other subsystem sharing this port was constructed first and reversed
+        // it: getCurrentPosition() negates its reading when the direction is REVERSE. A
+        // mechanism on a shared port must express its polarity in the power it writes, not via
+        // setDirection() — see OuttakeHardware.setWheelPower().
+        this.encoderMotor.setDirection(DcMotorSimple.Direction.FORWARD);
         if (!sharedPort) {
             this.encoderMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         }
