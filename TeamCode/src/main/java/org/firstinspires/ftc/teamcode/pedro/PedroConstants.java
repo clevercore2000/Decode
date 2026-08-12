@@ -45,11 +45,34 @@ public class PedroConstants {
     /** Robot mass in kilograms — used by the follower's braking model. Measure it. */
     public static double MASS_KG = 14.0;
 
+    /**
+     * Fraction of heading power applied while holding a point — which includes every
+     * {@code turn}/{@code turnTo}, since those are implemented as "hold this pose with a new
+     * heading". Pedro defaults this to 0.35 for a gentle hold; that is far too little authority
+     * for this chassis, which needs most of its available power just to break static friction,
+     * and shows up as a turn that starts fine then stalls and trembles as it closes in.
+     * Lower it toward Pedro's default if the robot hunts around a held pose.
+     */
+    public static double HOLD_POINT_HEADING_SCALING = 1.0;
+
+    /** Same idea for translation while holding. Pedro's default, kept as-is. */
+    public static double HOLD_POINT_TRANSLATIONAL_SCALING = 0.45;
+
+    /**
+     * Heading error at which a turn is considered finished, degrees. Pedro's default is
+     * 0.01 rad (0.57°) — tighter than this drivetrain can reliably settle, which would leave
+     * {@code isTurning()} true forever and a turn that never reports complete.
+     */
+    public static double TURN_TOLERANCE_DEG = 2.0;
+
     public static FollowerConstants followerConstants = new FollowerConstants()
             .mass(MASS_KG)
             .translationalPIDFCoefficients(new PIDFCoefficients(0.1, 0, 0.01, 0))
             .headingPIDFCoefficients(new PIDFCoefficients(1.0, 0, 0.08, 0))
             .drivePIDFCoefficients(new FilteredPIDFCoefficients(0.01, 0, 0.00005, 0.6, 0))
+            .holdPointHeadingScaling(HOLD_POINT_HEADING_SCALING)
+            .holdPointTranslationalScaling(HOLD_POINT_TRANSLATIONAL_SCALING)
+            .turnHeadingErrorThreshold(Math.toRadians(TURN_TOLERANCE_DEG))
             .centripetalScaling(0.0005);
 
     /**

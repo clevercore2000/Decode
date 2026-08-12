@@ -243,9 +243,28 @@ public class SwerveDrive {
      * Call {@link #update()} afterwards to actually drive the hardware.
      */
     public void setChassisSpeeds(ChassisSpeeds speeds) {
+        setChassisSpeeds(speeds, 1.0);
+    }
+
+    /**
+     * As {@link #setChassisSpeeds(ChassisSpeeds)}, but caps the fastest module at
+     * {@code maxWheelPower} instead of 1.0. Note this is a ceiling, not a scale: commands that
+     * already sit below it are left alone.
+     */
+    public void setChassisSpeeds(ChassisSpeeds speeds, double maxWheelPower) {
         SwerveModule[] modules = {fl, fr, bl, br};
-        SwerveModuleState[] states = kinematics.toSwerveModuleStates(speeds);
-        SwerveDriveKinematics.normalizeWheelSpeeds(states, 1.0);
+
+        // Put omega into the same normalised units as vx/vy before it reaches the kinematics,
+        // which would otherwise scale it by the drive base radius in metres and leave rotation
+        // roughly 3.7x weaker than translation for the same commanded magnitude.
+        ChassisSpeeds normalized = new ChassisSpeeds(
+                speeds.vxMetersPerSecond,
+                speeds.vyMetersPerSecond,
+                speeds.omegaRadiansPerSecond * DriveConstants.ROTATION_GAIN
+                        / DriveConstants.driveBaseRadiusMeters());
+
+        SwerveModuleState[] states = kinematics.toSwerveModuleStates(normalized);
+        SwerveDriveKinematics.normalizeWheelSpeeds(states, maxWheelPower);
 
         for (int i = 0; i < 4; i++) {
             modules[i].setTarget(states[i].angle.getRadians(), states[i].speedMetersPerSecond);

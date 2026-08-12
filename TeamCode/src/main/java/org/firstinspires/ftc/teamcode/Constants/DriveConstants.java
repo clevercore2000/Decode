@@ -20,6 +20,25 @@ public class DriveConstants {
     public static double DRIVE_FF = 1.0;
 
     /**
+     * Authority of the rotation term relative to translation, once omega has been normalised by
+     * the drive base radius. 1.0 means "omega = 1 drives the wheels as hard as vx = 1".
+     * <p>
+     * The normalisation matters because {@code SwerveDriveKinematics} multiplies omega by each
+     * module's distance from centre in <b>metres</b> (~0.272 m here), while vx and vy pass
+     * straight through as unitless power. Without correcting for that, a commanded omega
+     * reaches the wheels at ~27% of the strength of the same commanded vx — which reads as
+     * "the robot has no torque to turn" when it is really a units mismatch. Teleop masks it by
+     * scaling sticks by 5.0 and saturating; a path follower, which emits powers below 1, does
+     * not.
+     */
+    public static double ROTATION_GAIN = 1.0;
+
+    /** Distance from robot centre to a module, metres — the radius omega acts through. */
+    public static double driveBaseRadiusMeters() {
+        return Math.hypot(WHEELBASE_METERS / 2.0, TRACK_WIDTH_METERS / 2.0);
+    }
+
+    /**
      * Free translational speed of the chassis, metres/second. Used to convert the follower's
      * unitless power output into a velocity estimate for Pedro. Measure this with a straight-line
      * full-power run rather than trusting the nameplate figure.
