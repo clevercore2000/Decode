@@ -30,11 +30,16 @@ public class SteeringConstants {
     // identical everywhere a module is constructed, otherwise a tick offset measured by
     // SwerveCalibration is interpreted under a different sign convention by SwerveDrive.
     // Values below are the ones SwerveDrive has been running with.
-    public static final boolean FL_DRIVE_INVERTED = false;
+    // Drive inversions were flipped on all four modules so that +vx is physically forward,
+    // +vy physically left and +omega physically CCW — the convention kinematics/ documents and
+    // the one Pedro commands in. They previously encoded the opposite sense, which teleop
+    // absorbed by feeding sticks in raw (FTC's left_stick_y is -1 pushed forward). The teleop
+    // opmodes now negate all three axes, so driver-facing behaviour is unchanged.
+    public static final boolean FL_DRIVE_INVERTED = true;
     public static final boolean FL_ENCODER_INVERTED = true;
     public static final boolean FL_STEER_INVERTED = false;
 
-    public static final boolean FR_DRIVE_INVERTED = true;
+    public static final boolean FR_DRIVE_INVERTED = false;
     // Was true while OuttakeHardware reversed w2, which made the SDK negate this encoder for
     // free (setDirection(REVERSE) -> getCurrentPosition() negates). Two negations cancelled, so
     // teleop read +raw. That reversal is gone, so one negation goes with it and this must be
@@ -42,11 +47,11 @@ public class SteeringConstants {
     public static final boolean FR_ENCODER_INVERTED = false;
     public static final boolean FR_STEER_INVERTED = true;
 
-    public static final boolean BL_DRIVE_INVERTED = false;
+    public static final boolean BL_DRIVE_INVERTED = true;
     public static final boolean BL_ENCODER_INVERTED = false;
     public static final boolean BL_STEER_INVERTED = false;
 
-    public static final boolean BR_DRIVE_INVERTED = true;
+    public static final boolean BR_DRIVE_INVERTED = false;
     public static final boolean BR_ENCODER_INVERTED = true;
     public static final boolean BR_STEER_INVERTED = true;
 
@@ -56,6 +61,22 @@ public class SteeringConstants {
     public static int FR_TICK_OFFSET = -306;
     public static int BL_TICK_OFFSET = 320;
     public static int BR_TICK_OFFSET = 2100;
+
+    // Per-module azimuth trim, degrees. This is the fine correction for mechanical slop that a
+    // whole-tick calibration cannot express — wheels that are a degree or two off straight make
+    // the robot bow away from a straight path even when every module reports 0°.
+    //
+    // A module's trim is the angle its wheel *actually* sits at when the code believes it is at
+    // 0°, positive counter-clockwise. Tune it live: run Translation Test straight forward, and
+    // if the robot bows to the left, the modules are aiming left, so raise their trims.
+    // Adjust in small steps (0.5°) and change one module at a time.
+    //
+    // Distinct from *_TICK_OFFSET on purpose: the offset is the coarse zero measured once by
+    // SwerveCalibration, the trim is the live-tunable residual on top of it.
+    public static double FL_TRIM_DEG = 0.0;
+    public static double FR_TRIM_DEG = 0.0;
+    public static double BL_TRIM_DEG = 0.0;
+    public static double BR_TRIM_DEG = 0.0;
 
     // Limit switch hardware map names
     public static final String FL_SWITCH_NAME = "flSwitch";

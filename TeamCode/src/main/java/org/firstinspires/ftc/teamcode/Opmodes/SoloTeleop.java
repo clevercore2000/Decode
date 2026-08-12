@@ -85,9 +85,13 @@ public class SoloTeleop extends LinearOpMode {
             } else {
                 intake.Stop();
             }
-            double rawForward = gamepad1.left_stick_y;
-            double rawStrafe = gamepad1.left_stick_x;
-            double rawRotation = gamepad1.right_stick_x;
+            // All three negated to convert gamepad axes into the drive's convention
+            // (+x forward, +y left, +omega CCW): the SDK reports left_stick_y as -1 when the
+            // stick is pushed forward, and both x axes as +1 to the right. Physical behaviour
+            // is unchanged from before the drive inversions were corrected.
+            double rawForward = -gamepad1.left_stick_y;
+            double rawStrafe = -gamepad1.left_stick_x;
+            double rawRotation = -gamepad1.right_stick_x;
 
             if (Math.abs(rawForward) < ControlConstants.DEADBAND) rawForward = 0;
             if (Math.abs(rawStrafe) < ControlConstants.DEADBAND) rawStrafe = 0;

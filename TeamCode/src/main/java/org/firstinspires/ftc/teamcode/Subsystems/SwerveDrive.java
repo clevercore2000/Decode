@@ -253,13 +253,40 @@ public class SwerveDrive {
     }
 
     /**
+     * Commands the azimuth pattern that {@code shape} would produce, but with zero wheel speed
+     * — the modules aim as if they were about to perform that motion without driving.
+     * <p>
+     * Diagnostic aid: it separates "the modules cannot reach the pattern" from "the modules
+     * reach it but the wheels fight each other", which look identical once drive power is on.
+     */
+    public void setAzimuthsOnly(ChassisSpeeds shape) {
+        SwerveModule[] modules = {fl, fr, bl, br};
+        SwerveModuleState[] states = kinematics.toSwerveModuleStates(shape);
+        for (int i = 0; i < 4; i++) {
+            modules[i].setTarget(states[i].angle.getRadians(), 0);
+        }
+    }
+
+    /**
      * Run PID and write hardware for all modules. Call every loop iteration.
      */
     public void update() {
+        applyTrims();
         fl.update();
         fr.update();
         bl.update();
         br.update();
+    }
+
+    /**
+     * Pushes the azimuth trims in from constants every loop rather than at construction, so
+     * they can be dialled in from the dashboard while the robot is driving.
+     */
+    private void applyTrims() {
+        fl.setSteerTrimRad(Math.toRadians(SteeringConstants.FL_TRIM_DEG));
+        fr.setSteerTrimRad(Math.toRadians(SteeringConstants.FR_TRIM_DEG));
+        bl.setSteerTrimRad(Math.toRadians(SteeringConstants.BL_TRIM_DEG));
+        br.setSteerTrimRad(Math.toRadians(SteeringConstants.BR_TRIM_DEG));
     }
 
     public void hold() {

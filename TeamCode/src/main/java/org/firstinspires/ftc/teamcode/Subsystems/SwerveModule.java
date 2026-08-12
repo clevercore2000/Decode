@@ -32,6 +32,7 @@ public class SwerveModule {
     private boolean homed = false;
     private boolean wheelFlipped = false;
     private double lastSteerError = 0.0;
+    private double steerTrimRad = 0.0;
 
     private HomingStage homingStage = HomingStage.IDLE;
     private long backoffStartTime;
@@ -128,7 +129,19 @@ public class SwerveModule {
      */
     public double getSteerErrorRad() { return lastSteerError; }
 
-    public double getAngle() { return encoder.getWheelAngleRad(); }
+    /**
+     * Fine azimuth correction added to every angle reading, radians. Set from
+     * {@code SteeringConstants.*_TRIM_DEG} so it stays live-tunable; see the constants for the
+     * sign convention and how to tune it.
+     */
+    public void setSteerTrimRad(double trimRad) { this.steerTrimRad = trimRad; }
+
+    /**
+     * Wheel azimuth in radians, trim included — this is the angle the whole control path works
+     * in, so a trimmed module reports where its wheel really points rather than what its
+     * encoder says.
+     */
+    public double getAngle() { return encoder.getWheelAngleRad() + steerTrimRad; }
     public int getRawTicks() { return encoder.getRawTicks(); }
     public int getPositionTicks() { return encoder.getPositionTicks(); }
 
